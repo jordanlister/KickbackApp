@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>KickbackApp needs access to your microphone to record your voice answers to conversation questions. All audio processing happens on your device to protect your privacy.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>KickbackApp uses speech recognition to convert your voice answers to text. All speech processing happens on your device to protect your privacy.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
+</dict>
+</plist>

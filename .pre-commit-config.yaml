@@ -1,0 +1,148 @@
+# Pre-commit hooks for Kickback iOS App
+# Ensures code quality and consistency before commits
+
+repos:
+  # Swift formatting and linting
+  - repo: local
+    hooks:
+      # SwiftLint - Code quality and style enforcement
+      - id: swiftlint
+        name: SwiftLint
+        entry: swiftlint
+        language: system
+        types: [swift]
+        args: ['lint', '--strict', '--quiet']
+        stages: [commit]
+        
+      # swift-format - Code formatting
+      - id: swift-format
+        name: swift-format
+        entry: swift-format
+        language: system
+        types: [swift]
+        args: ['--in-place']
+        stages: [commit]
+        
+      # Check for merge conflict markers
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+        entry: check-merge-conflict
+        language: system
+        types: [text]
+        
+      # Check file sizes (prevent large model files from being committed accidentally)
+      - id: check-added-large-files
+        name: Check for large files
+        entry: check-added-large-files
+        language: system
+        args: ['--maxkb=10240'] # 10MB limit
+        
+      # Ensure files end with newlines
+      - id: end-of-file-fixer
+        name: Fix End of Files
+        entry: end-of-file-fixer
+        language: system
+        types: [text]
+        
+      # Remove trailing whitespace
+      - id: trailing-whitespace
+        name: Trim Trailing Whitespace
+        entry: trailing-whitespace-fixer
+        language: system
+        types: [text]
+        args: [--markdown-linebreak-ext=md]
+        
+      # Check YAML files
+      - id: check-yaml
+        name: Check Yaml
+        entry: check-yaml
+        language: system
+        types: [yaml]
+        
+      # Check JSON files
+      - id: check-json
+        name: Check JSON
+        entry: check-json
+        language: system
+        types: [json]
+        
+      # Prevent committing to main branch directly
+      - id: no-commit-to-branch
+        name: Don't commit to main branch
+        entry: no-commit-to-branch
+        language: system
+        args: ['--branch', 'main', '--branch', 'master']
+        stages: [commit]
+        
+      # Custom hook: Check for secrets/API keys
+      - id: check-secrets
+        name: Check for secrets
+        entry: bash
+        language: system
+        args:
+          - -c
+          - |
+            if grep -r -i -E "(api_key|apikey|secret|password|token|credential)" --include="*.swift" --include="*.plist" --exclude-dir=".git" . | grep -v -E "(SecretKey|PasswordField|TokenStore|APIKeyManager)"; then
+              echo "❌ Potential secrets detected in code. Please remove sensitive data."
+              exit 1
+            fi
+        stages: [commit]
+        
+      # Custom hook: Ensure offline-first compliance
+      - id: check-network-usage
+        name: Check for network calls
+        entry: bash
+        language: system
+        args:
+          - -c
+          - |
+            if grep -r -E "(URLSession|NSURLConnection|Alamofire|AFNetworking)" --include="*.swift" --exclude-dir=".git" . | grep -v -E "(Mock|Test|Example|Comment)"; then
+              echo "❌ Network calls detected. Kickback must be offline-first."
+              exit 1
+            fi
+        stages: [commit]
+        
+      # Custom hook: Check for emoji usage in code
+      - id: check-emoji-usage
+        name: Check for emoji in code
+        entry: bash
+        language: system
+        args:
+          - -c
+          - |
+            if grep -r -P '[\x{1F600}-\x{1F64F}]|[\x{1F300}-\x{1F5FF}]|[\x{1F680}-\x{1F6FF}]|[\x{1F1E0}-\x{1F1FF}]|[\x{2600}-\x{26FF}]|[\x{2700}-\x{27BF}]' --include="*.swift" --exclude-dir=".git" . | grep -v -E "(Mock|Test|Example|Comment)"; then
+              echo "❌ Emoji usage detected in code. UI must be emoji-free per requirements."
+              exit 1
+            fi
+        stages: [commit]
+        
+      # Custom hook: Verify Xcode project builds
+      - id: xcode-build-check
+        name: Verify Xcode project builds
+        entry: bash
+        language: system
+        args:
+          - -c
+          - |
+            if command -v xcodebuild >/dev/null 2>&1; then
+              echo "Building Xcode project..."
+              xcodebuild -project KickbackApp.xcodeproj -scheme KickbackApp -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.0' build-for-testing | grep -E "(BUILD SUCCEEDED|BUILD FAILED)"
+              if [ ${PIPESTATUS[0]} -ne 0 ]; then
+                echo "❌ Xcode build failed. Please fix build errors before committing."
+                exit 1
+              fi
+              echo "✅ Xcode build succeeded."
+            else
+              echo "⚠️  Xcode not available. Skipping build check."
+            fi
+        stages: [push]
+        
+# Configuration
+default_stages: [commit]
+fail_fast: false
+
+# Install instructions for team members
+# Run these commands to set up pre-commit hooks:
+# 1. Install pre-commit: pip install pre-commit
+# 2. Install hooks: pre-commit install
+# 3. (Optional) Run on all files: pre-commit run --all-files
