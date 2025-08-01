@@ -301,7 +301,7 @@ public struct CompatibilityPromptTemplates: CompatibilityPromptTemplateProvider 
         return focusAreas.map { $0.displayName }.joined(separator: ", ")
     }
     
-    private func categoryGuidance(for category: QuestionCategory) -> String {
+    internal func categoryGuidance(for category: QuestionCategory) -> String {
         switch category {
         case .blindDate, .firstDate:
             return """
@@ -403,7 +403,7 @@ public struct CompatibilityPromptProcessor {
         
         // Add category-specific guidance if needed
         if request.analysisType == .categorySpecific {
-            let guidance = categoryGuidance(for: request.questionCategory)
+            let guidance = (templateProvider as? CompatibilityPromptTemplates)?.categoryGuidance(for: request.questionCategory) ?? ""
             processedTemplate = processedTemplate.replacingOccurrences(of: "{{category_guidance}}", with: guidance)
         }
         
@@ -453,10 +453,6 @@ public struct CompatibilityPromptProcessor {
         return cleanupTemplate(template)
     }
     
-    private func categoryGuidance(for category: QuestionCategory) -> String {
-        let templates = CompatibilityPromptTemplates()
-        return templates.categoryGuidance(for: category)
-    }
     
     private func cleanupTemplate(_ template: String) -> String {
         // Remove lines that contain only whitespace after variable substitution
@@ -474,66 +470,3 @@ public struct CompatibilityPromptProcessor {
     }
 }
 
-// MARK: - Extensions for Template Support
-
-extension CompatibilityPromptTemplates {
-    func categoryGuidance(for category: QuestionCategory) -> String {
-        switch category {
-        case .blindDate, .firstDate:
-            return """
-            - Focus on initial impression and openness to connection
-            - Assess comfort with sharing appropriate personal information
-            - Evaluate social skills and conversation ability
-            - Consider respect for boundaries and mutual interest
-            """
-            
-        case .earlyDating:
-            return """
-            - Evaluate emotional availability and dating readiness
-            - Assess communication of interests and values
-            - Look for signs of emotional maturity
-            - Consider ability to balance sharing with listening
-            """
-            
-        case .deepCouple, .intimacyBuilding:
-            return """
-            - Focus on emotional depth and vulnerability capacity
-            - Assess ability to share intimate thoughts and feelings
-            - Evaluate empathy and emotional responsiveness
-            - Consider trust-building and authentic connection
-            """
-            
-        case .longTermRelationship:
-            return """
-            - Evaluate commitment and future-oriented thinking
-            - Assess ability to navigate relationship challenges
-            - Look for signs of mature partnership perspective
-            - Consider growth mindset and adaptability
-            """
-            
-        case .conflictResolution:
-            return """
-            - Focus on emotional regulation and conflict navigation
-            - Assess empathy and perspective-taking ability
-            - Evaluate communication during disagreement
-            - Consider problem-solving approach and fairness
-            """
-            
-        case .emotionalIntelligence:
-            return """
-            - Evaluate self-awareness and emotional vocabulary
-            - Assess understanding of emotional dynamics
-            - Look for empathy and emotional responsiveness
-            - Consider emotional regulation and expression
-            """
-            
-        default:
-            return """
-            - Apply general compatibility analysis principles
-            - Focus on communication clarity and emotional openness
-            - Assess relationship readiness appropriate to the category
-            - Consider overall emotional intelligence and maturity
-            """
-        }
-    }
-}

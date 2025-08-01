@@ -271,7 +271,7 @@ public struct CompatibilityTestingUtilities {
     /// Measures analysis performance
     /// - Parameter operation: The operation to measure
     /// - Returns: Performance metrics
-    public static func measurePerformance<T>(_ operation: () async throws -> T) async -> PerformanceMetrics {
+    public static func measurePerformance<T>(_ operation: () async throws -> T) async -> CompatibilityPerformanceMetrics {
         let startTime = Date()
         let startMemory = getMemoryUsage()
         
@@ -280,7 +280,7 @@ public struct CompatibilityTestingUtilities {
             let endTime = Date()
             let endMemory = getMemoryUsage()
             
-            return PerformanceMetrics(
+            return CompatibilityPerformanceMetrics(
                 executionTime: endTime.timeIntervalSince(startTime),
                 memoryDelta: endMemory - startMemory,
                 success: true,
@@ -288,7 +288,7 @@ public struct CompatibilityTestingUtilities {
             )
         } catch {
             let endTime = Date()
-            return PerformanceMetrics(
+            return CompatibilityPerformanceMetrics(
                 executionTime: endTime.timeIntervalSince(startTime),
                 memoryDelta: 0,
                 success: false,
@@ -348,13 +348,13 @@ public struct CompatibilityTestingUtilities {
             "Your responses indicate healthy relationship readiness with room for development."
         ]
         
-        let index = generator.nextInt(in: 0..<summaries.count)
+        let index = generator.nextInt(in: 0...(summaries.count - 1))
         return summaries[index]
     }
     
     private static func generateMockTone(generator: inout SeededRandomGenerator) -> String {
         let tones = ["Thoughtful", "Confident", "Reflective", "Open", "Sincere", "Considerate"]
-        let index = generator.nextInt(in: 0..<tones.count)
+        let index = generator.nextInt(in: 0...(tones.count - 1))
         return tones[index]
     }
     
@@ -523,7 +523,7 @@ public struct ComparisonResult {
 }
 
 /// Performance metrics for analysis operations
-public struct PerformanceMetrics {
+public struct CompatibilityPerformanceMetrics {
     public let executionTime: TimeInterval
     public let memoryDelta: UInt64
     public let success: Bool

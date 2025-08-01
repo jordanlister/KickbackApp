@@ -26,19 +26,39 @@ struct ConversationCard: View {
     private let flipDuration: Double = 0.6
     private let scaleFactor: CGFloat = 0.95
     
+    // MARK: - Computed Properties
+    
+    private var cardBackground: some View {
+        RoundedRectangle(cornerRadius: cornerRadius)
+            .fill(cardBackgroundGradient)
+            .shadow(
+                color: Color.black.opacity(0.1),
+                radius: viewModel.isFlipped ? 20 : 8,
+                x: 0,
+                y: viewModel.isFlipped ? 10 : 4
+            )
+    }
+
     // MARK: - Body
     
     var body: some View {
+        cardMainContent
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(accessibilityLabel)
+            .accessibilityHint(accessibilityHint)
+            .accessibilityValue(accessibilityValue)
+            .accessibilityAddTraits(accessibilityTraits)
+            .accessibilityAction(.default) {
+                // Default tap action for accessibility
+            }
+            .accessibilityScrollAction { edge in
+                // Handle scroll actions for accessibility
+            }
+    }
+    
+    private var cardMainContent: some View {
         ZStack {
-            // Card background with subtle gradient
-            RoundedRectangle(cornerRadius: cornerRadius)
-                .fill(cardBackgroundGradient)
-                .shadow(
-                    color: Color.black.opacity(0.1),
-                    radius: viewModel.isFlipped ? 20 : 8,
-                    x: 0,
-                    y: viewModel.isFlipped ? 10 : 4
-                )
+            cardBackground
             
             // Card content
             VStack(spacing: 16) {
@@ -67,18 +87,6 @@ struct ConversationCard: View {
             .spring(response: flipDuration, dampingFraction: 0.8, blendDuration: 0),
             value: viewModel.isFlipped
         )
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityLabel)
-        .accessibilityHint(accessibilityHint)
-        .accessibilityValue(accessibilityValue)
-        .accessibilityAddTraits(accessibilityTraits)
-        .accessibilityAction(.default) {
-            // Default tap action for accessibility
-        }
-        .accessibilityScrollAction { edge in
-            // Handle scroll actions for accessibility
-            return .handled
-        }
     }
     
     // MARK: - Subviews
@@ -438,7 +446,7 @@ struct ConversationCard: View {
     
     /// Dynamic accessibility traits based on card state
     private var accessibilityTraits: AccessibilityTraits {
-        var traits: AccessibilityTraits = [.button]
+        var traits: AccessibilityTraits = []
         
         if viewModel.isLoading {
             traits.insert(.updatesFrequently)

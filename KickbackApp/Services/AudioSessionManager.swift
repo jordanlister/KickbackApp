@@ -46,8 +46,10 @@ public final class AudioSessionManager: ObservableObject {
     }
     
     deinit {
-        deactivateSession()
-        removeNotificationObservers()
+        Task { @MainActor in
+            deactivateSession()
+            removeNotificationObservers()
+        }
     }
     
     // MARK: - Public Methods

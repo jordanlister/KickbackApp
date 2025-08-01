@@ -241,13 +241,15 @@ public final class CompatibilityViewModel: ObservableObject {
             sessionAnalysis = analysis
             
             // Update session statistics
-            sessionStatistics = try await sessionManager.getSessionStatistics(sessionId)
+            if let concreteManager = sessionManager as? CompatibilitySessionManagerService {
+                sessionStatistics = try await concreteManager.getSessionStatistics(sessionId)
+            }
             
             logger.info("Successfully analyzed session")
             
         } catch {
             logger.error("Session analysis failed: \(error.localizedDescription)")
-            currentError = .analysisError("Session analysis failed: \(error.localizedDescription)")
+            currentError = .processingError("Session analysis failed: \(error.localizedDescription)")
         }
     }
     
@@ -256,10 +258,15 @@ public final class CompatibilityViewModel: ObservableObject {
         logger.info("Loading recent results")
         
         do {
-            let results = try await sessionManager.getRecentResults(limit: maxRecentResults)
-            recentResults = results
-            
-            logger.debug("Loaded \(results.count) recent results")
+            if let concreteManager = sessionManager as? CompatibilitySessionManagerService {
+                let results = try await concreteManager.getRecentResults(limit: maxRecentResults)
+                recentResults = results
+                logger.debug("Loaded \(results.count) recent results")
+            } else {
+                // Fallback for protocol-only implementations
+                logger.warning("SessionManager doesn't support getRecentResults, using empty array")
+                recentResults = []
+            }
             
         } catch {
             logger.error("Failed to load recent results: \(error.localizedDescription)")
@@ -310,7 +317,12 @@ public final class CompatibilityViewModel: ObservableObject {
     /// - Returns: Results for the specified category
     public func getResultsForCategory(_ category: QuestionCategory) async -> [CompatibilityResult] {
         do {
-            return try await sessionManager.getResultsByCategory(category)
+            if let concreteManager = sessionManager as? CompatibilitySessionManagerService {
+                return try await concreteManager.getResultsByCategory(category)
+            } else {
+                logger.warning("SessionManager doesn't support getResultsByCategory, returning empty array")
+                return []
+            }
         } catch {
             logger.error("Failed to get results for category: \(error.localizedDescription)")
             return []
@@ -325,7 +337,11 @@ public final class CompatibilityViewModel: ObservableObject {
         
         logger.info("Ending current session: \(sessionId)")
         
-        await sessionManager.endSession(sessionId)
+        if let concreteManager = sessionManager as? CompatibilitySessionManagerService {
+            await concreteManager.endSession(sessionId)
+        } else {
+            logger.warning("SessionManager doesn't support endSession")
+        }
         currentSessionId = nil
         sessionAnalysis = nil
         sessionStatistics = nil
@@ -560,3 +576,4 @@ extension CompatibilityViewModel {
         return viewModel
     }
 }
+#endif

@@ -69,18 +69,23 @@ public final class LLMService: @unchecked Sendable {
     private func performInitialization() throws {
         print("Initializing LLMService with MLX Swift framework...")
         
-        // Verify MLX is available and working
-        let testArray = MLXArray([1.0, 2.0, 3.0])
-        print("MLX test array created successfully: \(testArray)")
-        
-        // TODO: Add model loading logic here
-        // This will include:
-        // 1. Loading OpenELM-3B model weights from Resources/Models
-        // 2. Setting up tokenizer
-        // 3. Configuring model for inference
-        // 4. Warming up the model with a test inference
-        
-        print("LLMService initialized successfully")
+        do {
+            // Verify MLX is available and working
+            let testArray = MLXArray([1.0, 2.0, 3.0])
+            print("MLX test array created successfully: \(testArray)")
+            
+            // TODO: Add model loading logic here
+            // This will include:
+            // 1. Loading OpenELM-3B model weights from Resources/Models
+            // 2. Setting up tokenizer
+            // 3. Configuring model for inference
+            // 4. Warming up the model with a test inference
+            
+            print("LLMService initialized successfully")
+        } catch {
+            print("MLX initialization failed: \(error)")
+            throw LLMServiceError.initializationFailed("MLX framework initialization failed: \(error.localizedDescription)")
+        }
     }
 }
 

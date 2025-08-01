@@ -65,7 +65,7 @@ public final class AudioTranscriber: NSObject, ObservableObject {
     
     // MARK: - Initialization
     
-    override init() {
+    public override init() {
         super.init()
         setupSpeechRecognizer()
         checkPermissions()
@@ -73,7 +73,9 @@ public final class AudioTranscriber: NSObject, ObservableObject {
     }
     
     deinit {
-        stopRecording()
+        Task { @MainActor in
+            await stopRecording()
+        }
         audioEngine?.stop()
         audioLevelTimer?.invalidate()
     }
@@ -372,7 +374,7 @@ public final class AudioTranscriber: NSObject, ObservableObject {
 // MARK: - AudioSessionManagerDelegate
 
 extension AudioTranscriber: AudioSessionManagerDelegate {
-    public func audioSessionWasInterrupted() {
+    nonisolated public func audioSessionWasInterrupted() {
         Task { @MainActor in
             if isRecording {
                 _ = await stopRecording()
@@ -381,7 +383,7 @@ extension AudioTranscriber: AudioSessionManagerDelegate {
         }
     }
     
-    public func audioSessionInterruptionEnded(shouldResume: Bool) {
+    nonisolated public func audioSessionInterruptionEnded(shouldResume: Bool) {
         // For now, we don't automatically resume recording after interruption
         // The user will need to manually start recording again
         if !shouldResume {
@@ -391,13 +393,13 @@ extension AudioTranscriber: AudioSessionManagerDelegate {
         }
     }
     
-    public func audioRouteChanged(reason: String) {
+    nonisolated public func audioRouteChanged(reason: String) {
         print("Audio route changed: \(reason)")
         // We could potentially notify the user about audio route changes
         // For now, we'll just log it
     }
     
-    public func audioSessionSecondaryAudioSilenced() {
+    nonisolated public func audioSessionSecondaryAudioSilenced() {
         print("Secondary audio was silenced")
         // This might indicate that another app is using audio
         // We could potentially pause recording or notify the user
@@ -407,14 +409,18 @@ extension AudioTranscriber: AudioSessionManagerDelegate {
 // MARK: - AVAudioRecorderDelegate
 
 extension AudioTranscriber: AVAudioRecorderDelegate {
-    public func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
-        if !flag {
-            currentError = .recordingError("Audio recording failed")
+    nonisolated public func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
+        Task { @MainActor in
+            if !flag {
+                currentError = .recordingError("Audio recording failed")
+            }
         }
     }
     
-    public func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error: Error?) {
-        currentError = .recordingError(error?.localizedDescription ?? "Audio encoding error")
+    nonisolated public func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error: Error?) {
+        Task { @MainActor in
+            currentError = .recordingError(error?.localizedDescription ?? "Audio encoding error")
+        }
     }
 }
 

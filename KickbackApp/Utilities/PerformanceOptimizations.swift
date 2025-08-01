@@ -112,15 +112,12 @@ extension View {
     
     /// Reduces animation complexity on older devices
     func adaptivePerformance() -> some View {
-        Group {
-            if ProcessInfo.processInfo.thermalState == .nominal {
-                // Full animations on capable devices
-                self
-            } else {
-                // Reduced animations on thermally constrained devices
-                self.animation(.none)
-            }
-        }
+        self.animation(
+            ProcessInfo.processInfo.thermalState == .nominal 
+                ? .default 
+                : .none,
+            value: UUID()
+        )
     }
 }
 
@@ -158,6 +155,10 @@ class PerformanceMetrics: ObservableObject {
     
     private var frameTimes: [Double] = []
     private let maxSamples = 60 // Track last 60 frames
+    
+    init() {
+        // Default initializer
+    }
     
     func recordFrameTime(_ time: Double) {
         frameTimes.append(time)

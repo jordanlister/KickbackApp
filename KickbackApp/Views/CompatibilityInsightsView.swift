@@ -86,7 +86,7 @@ struct InsightCard: View {
                 // Chevron
                 Image(systemName: "chevron.right")
                     .font(.caption)
-                    .foregroundColor(.tertiary)
+                    .foregroundColor(.secondary)
             }
             .padding(.vertical, 8)
             .padding(.horizontal, 12)
@@ -430,7 +430,7 @@ struct EmptyInsightsView: View {
             
             Text("Complete the analysis to see your compatibility insights")
                 .font(.caption)
-                .foregroundColor(.tertiary)
+                .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
         }
         .padding(.vertical, 20)

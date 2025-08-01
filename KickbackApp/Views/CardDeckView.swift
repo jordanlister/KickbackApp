@@ -150,8 +150,7 @@ struct CardDeckView: View {
                 .padding(.vertical, 8)
                 .background(
                     Capsule()
-                        .fill(Color.white.opacity(0.2))
-                        .backdrop(BlurView(style: .systemUltraThinMaterialLight))
+                        .fill(.ultraThinMaterial)
                 )
             }
             .transition(.scale.combined(with: .opacity))
@@ -179,12 +178,12 @@ struct CardDeckView: View {
         DragGesture()
             .updating($dragOffset) { value, state, _ in
                 // Only allow downward pulls when no card is selected
-                if mainViewModel.selectedCardIndex == nil && value.translation.y > 0 {
+                if mainViewModel.selectedCardIndex == nil && value.translation.height > 0 {
                     state = value.translation
                 }
             }
             .onEnded { value in
-                if value.translation.y > refreshThreshold && !isRefreshing {
+                if value.translation.height > refreshThreshold && !isRefreshing {
                     triggerRefresh()
                 }
                 
@@ -235,8 +234,8 @@ struct CardDeckView: View {
     
     /// Updates refresh offset based on drag gesture
     private func updateRefreshOffset(_ dragValue: CGSize) {
-        if mainViewModel.selectedCardIndex == nil && dragValue.y > 0 {
-            refreshOffset = min(dragValue.y * 0.8, 120) // Cap maximum offset
+        if mainViewModel.selectedCardIndex == nil && dragValue.height > 0 {
+            refreshOffset = min(dragValue.height * 0.8, 120) // Cap maximum offset
         }
     }
     

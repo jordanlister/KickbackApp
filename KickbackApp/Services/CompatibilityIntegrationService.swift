@@ -31,7 +31,7 @@ public final class CompatibilityIntegrationService: ObservableObject {
     // MARK: - Dependencies
     
     private let questionEngine: QuestionEngine
-    private let audioTranscriber: AudioTranscriber
+    private let audioTranscriber: AudioTranscriber?
     private let compatibilityAnalyzer: CompatibilityAnalyzer
     private let sessionManager: CompatibilitySessionManager
     private let logger: Logger
@@ -53,7 +53,7 @@ public final class CompatibilityIntegrationService: ObservableObject {
     ///   - saveResults: Whether to automatically save results (default: true)
     public init(
         questionEngine: QuestionEngine = QuestionEngineService(),
-        audioTranscriber: AudioTranscriber = AudioTranscriber(),
+        audioTranscriber: AudioTranscriber? = nil,
         compatibilityAnalyzer: CompatibilityAnalyzer = CompatibilityAnalyzerService(),
         sessionManager: CompatibilitySessionManager = CompatibilitySessionManagerService(),
         autoAnalyze: Bool = true,
@@ -86,11 +86,21 @@ public final class CompatibilityIntegrationService: ObservableObject {
         
         do {
             // Step 1: Generate question
-            let questionResult = try await questionEngine.generateQuestion(for: category)
+            let questionText = try await questionEngine.generateQuestion(for: category)
+            let questionResult = QuestionResult(
+                question: questionText,
+                category: category,
+                configuration: QuestionConfiguration(category: category),
+                processingMetadata: ProcessingMetadata(
+                    promptUsed: "Integration Service Generated",
+                    rawLLMResponse: questionText,
+                    processingDuration: 0.0
+                )
+            )
             currentQuestion = questionResult
             workflowProgress = 0.2
             
-            logger.info("Generated question: \(questionResult.question, privacy: .private)")
+            logger.info("Generated question: \(questionText, privacy: .private)")
             
             // Step 2: Wait for user to provide response (handled externally)
             workflowState = .waitingForResponse
@@ -115,6 +125,13 @@ public final class CompatibilityIntegrationService: ObservableObject {
         workflowState = .recording
         workflowProgress = 0.4
         
+        guard let audioTranscriber = audioTranscriber else {
+            logger.error("AudioTranscriber not available")
+            integrationError = .recordingFailed(NSError(domain: "AudioTranscriber", code: -1, userInfo: [NSLocalizedDescriptionKey: "AudioTranscriber not initialized"]))
+            workflowState = .error
+            return
+        }
+        
         do {
             try await audioTranscriber.startRecording()
             logger.info("Audio recording started successfully")
@@ -135,6 +152,13 @@ public final class CompatibilityIntegrationService: ObservableObject {
         logger.info("Stopping audio recording and processing")
         workflowState = .transcribing
         workflowProgress = 0.6
+        
+        guard let audioTranscriber = audioTranscriber else {
+            logger.error("AudioTranscriber not available for stopping recording")
+            integrationError = .recordingFailed(NSError(domain: "AudioTranscriber", code: -1, userInfo: [NSLocalizedDescriptionKey: "AudioTranscriber not initialized"]))
+            workflowState = .error
+            return
+        }
         
         do {
             // Stop recording and get transcription

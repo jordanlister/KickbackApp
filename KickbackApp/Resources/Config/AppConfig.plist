@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>LLMConfiguration</key>
+    <dict>
+        <key>ModelName</key>
+        <string>OpenELM-3B</string>
+        <key>ModelPath</key>
+        <string>Models</string>
+        <key>MaxTokens</key>
+        <integer>512</integer>
+        <key>Temperature</key>
+        <real>0.7</real>
+        <key>TopP</key>
+        <real>0.9</real>
+        <key>TimeoutSeconds</key>
+        <integer>30</integer>
+    </dict>
+    <key>AppConfiguration</key>
+    <dict>
+        <key>OfflineMode</key>
+        <true/>
+        <key>AnalyticsEnabled</key>
+        <false/>
+        <key>LogLevel</key>
+        <string>info</string>
+    </dict>
+</dict>
+</plist>

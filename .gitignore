@@ -1,0 +1,24 @@
+# Model files (too large for git)
+KickbackApp/Resources/Models/*.safetensors
+KickbackApp/Resources/Models/model.safetensors.index.json
+
+# Xcode
+*.xcuserstate
+*.xcworkspace
+!*.xcworkspace/contents.xcworkspacedata
+/build
+/DerivedData
+*.hmap
+*.ipa
+
+# Swift Package Manager
+.build/
+Packages/
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+
+# MLX virtual environment
+mlx_env/
+
+# Cache and temporary files
+.cache/
+*.tmp
