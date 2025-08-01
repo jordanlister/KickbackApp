@@ -62,8 +62,8 @@ public final class MainContentViewModel: ObservableObject {
     /// Initializes MainContentViewModel with dependency injection
     /// - Parameter questionEngine: Service for generating questions
     init(questionEngine: QuestionEngine? = nil) {
-        // Use a mock service for now to avoid MLX initialization during launch
-        self.questionEngine = questionEngine ?? MockQuestionEngine()
+        // Use real QuestionEngineService for actual AI-powered question generation
+        self.questionEngine = questionEngine ?? QuestionEngineService()
         setupInitialState()
     }
     

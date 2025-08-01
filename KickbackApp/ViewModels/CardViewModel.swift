@@ -65,7 +65,7 @@ public final class CardViewModel: ObservableObject {
     // MARK: - Initialization
     
     /// Initializes CardViewModel with dependency injection for testing
-    /// - Parameter questionEngine: Service for generating questions (defaults to shared instance)
+    /// - Parameter questionEngine: Service for generating questions (defaults to real AI service)
     init(questionEngine: QuestionEngine = QuestionEngineService()) {
         self.questionEngine = questionEngine
     }
