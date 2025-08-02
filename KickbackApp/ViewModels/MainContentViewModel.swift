@@ -87,7 +87,7 @@ public final class MainContentViewModel: ObservableObject {
         }
     }
     
-    /// Selects a card and triggers flip animation
+    /// Selects a card and triggers flip animation with question loading
     /// - Parameter index: Index of the card to select
     func selectCard(at index: Int) {
         guard index < cardViewModels.count else { return }
@@ -101,7 +101,15 @@ public final class MainContentViewModel: ObservableObject {
         
         // Select the tapped card
         selectedCardIndex = index
-        cardViewModels[index].flipUp()
+        let cardVM = cardViewModels[index]
+        cardVM.flipUp()
+        
+        // Load question if it's still a placeholder
+        if cardVM.question == "Tap to reveal question..." {
+            Task {
+                await cardVM.loadQuestion(for: cardVM.category)
+            }
+        }
         
         // Haptic feedback for card selection
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -186,13 +194,15 @@ public final class MainContentViewModel: ObservableObject {
     private func initializeCards() async {
         let initialCategories = getRandomCategories()
         
-        await withTaskGroup(of: Void.self) { group in
-            for (index, category) in initialCategories.enumerated() {
-                guard index < cardViewModels.count else { break }
-                
-                group.addTask {
-                    await self.cardViewModels[index].loadQuestion(for: category)
-                }
+        // Set up cards with categories but don't load questions yet
+        // Questions will be generated when user actually flips a card
+        for (index, category) in initialCategories.enumerated() {
+            guard index < cardViewModels.count else { break }
+            
+            await MainActor.run {
+                cardViewModels[index].category = category
+                cardViewModels[index].question = "Tap to reveal question..."
+                cardViewModels[index].isLoading = false
             }
         }
     }
