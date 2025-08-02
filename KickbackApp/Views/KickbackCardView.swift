@@ -17,6 +17,12 @@ struct KickbackCardView: View {
     let cardIndex: Int
     let isBack: Bool
     
+    /// Tap action closure passed from parent view
+    var onTap: (() -> Void)?
+    
+    /// Visual feedback state for taps
+    @State private var isPressed: Bool = false
+    
     /// Glass effect ID for smooth morphing transitions
     private var glassEffectID: String {
         return "glass_card_\(cardIndex)_\(isBack ? "back" : "front")"
@@ -49,11 +55,27 @@ struct KickbackCardView: View {
             glassID: glassEffectID
         )
         .interactive()
+        .scaleEffect(isPressed ? 0.95 : 1.0)
         .shadow(
-            color: categoryColor.opacity(0.2),
+            color: categoryColor.opacity(isPressed ? 0.4 : 0.2),
             radius: glassShadowRadius,
             x: 0,
-            y: 6
+            y: isPressed ? 3 : 6
+        )
+        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
+        .onTapGesture {
+            handleCardTap()
+        }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    if !isPressed {
+                        isPressed = true
+                    }
+                }
+                .onEnded { _ in
+                    isPressed = false
+                }
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
@@ -240,6 +262,22 @@ struct KickbackCardView: View {
             .interactive()
     }
     
+    // MARK: - Private Methods
+    
+    /// Handles card tap with haptic feedback and calls the provided onTap closure
+    private func handleCardTap() {
+        print("KickbackCardView handleCardTap called for card \(cardIndex)") // Debug log
+        
+        // Provide haptic feedback for better user experience
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.impactOccurred()
+        
+        // Call the tap handler provided by parent view
+        onTap?()
+        
+        print("KickbackCardView onTap closure executed for card \(cardIndex)") // Debug log
+    }
+    
     // MARK: - Computed Properties
     
     /// Dynamic glass material based on category and state
@@ -306,13 +344,16 @@ struct KickbackCardView: View {
 
 #Preview("Card Back") {
     KickbackCardView(
-        viewModel: CardViewModel.mock(
+        viewModel: CardViewModel.preview(
             question: "What's something that always makes you laugh?",
             category: .funAndPlayful,
             isFlipped: false
         ),
         cardIndex: 0,
-        isBack: true
+        isBack: true,
+        onTap: {
+            print("Card tapped in preview")
+        }
     )
     .frame(width: 100, height: 140)
     .padding()
@@ -330,13 +371,16 @@ struct KickbackCardView: View {
 
 #Preview("Card Front") {
     KickbackCardView(
-        viewModel: CardViewModel.mock(
+        viewModel: CardViewModel.preview(
             question: "What's something that always makes you laugh, even on your worst days?",
             category: .funAndPlayful,
             isFlipped: true
         ),
         cardIndex: 0,
-        isBack: false
+        isBack: false,
+        onTap: {
+            print("Card tapped in preview")
+        }
     )
     .frame(width: 100, height: 140)
     .padding()
@@ -354,14 +398,17 @@ struct KickbackCardView: View {
 
 #Preview("Loading State") {
     KickbackCardView(
-        viewModel: CardViewModel.mock(
+        viewModel: CardViewModel.preview(
             question: "",
             category: .personalGrowth,
             isFlipped: false,
             isLoading: true
         ),
         cardIndex: 0,
-        isBack: false
+        isBack: false,
+        onTap: {
+            print("Loading card tapped in preview")
+        }
     )
     .frame(width: 100, height: 140)
     .padding()
@@ -380,30 +427,33 @@ struct KickbackCardView: View {
 #Preview("All Cards Horizontal") {
     HStack(spacing: 20) {
         KickbackCardView(
-            viewModel: CardViewModel.mock(
+            viewModel: CardViewModel.preview(
                 question: "What's your favorite childhood memory?",
                 category: .firstDate
             ),
             cardIndex: 0,
-            isBack: true
+            isBack: true,
+            onTap: { print("First card tapped") }
         )
         
         KickbackCardView(
-            viewModel: CardViewModel.mock(
+            viewModel: CardViewModel.preview(
                 question: "What's something you're currently learning about yourself?",
                 category: .personalGrowth
             ),
             cardIndex: 1,
-            isBack: true
+            isBack: true,
+            onTap: { print("Second card tapped") }
         )
         
         KickbackCardView(
-            viewModel: CardViewModel.mock(
+            viewModel: CardViewModel.preview(
                 question: "If you could be any fictional character for a day, who would you choose?",
                 category: .funAndPlayful
             ),
             cardIndex: 2,
-            isBack: true
+            isBack: true,
+            onTap: { print("Third card tapped") }
         )
     }
     .frame(width: 100, height: 140)

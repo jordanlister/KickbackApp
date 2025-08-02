@@ -548,7 +548,7 @@ struct ConversationCard: View {
 
 #Preview("Single Card - Collapsed") {
     ConversationCard(
-        viewModel: CardViewModel.mock(
+        viewModel: CardViewModel.preview(
             question: "What's something that always makes you laugh, even on your worst days?",
             category: .funAndPlayful,
             isFlipped: false
@@ -571,7 +571,7 @@ struct ConversationCard: View {
 
 #Preview("Single Card - Expanded") {
     ConversationCard(
-        viewModel: CardViewModel.mock(
+        viewModel: CardViewModel.preview(
             question: "What's a personal value that you've developed or strengthened over the past few years, and how has it changed the way you approach relationships?",
             category: .personalGrowth,
             isFlipped: true
@@ -594,7 +594,7 @@ struct ConversationCard: View {
 
 #Preview("Loading State") {
     ConversationCard(
-        viewModel: CardViewModel.mock(
+        viewModel: CardViewModel.preview(
             question: "",
             category: .deepCouple,
             isFlipped: false,
@@ -619,7 +619,7 @@ struct ConversationCard: View {
 #Preview("Multiple Cards") {
     VStack(spacing: 16) {
         ConversationCard(
-            viewModel: CardViewModel.mock(
+            viewModel: CardViewModel.preview(
                 question: "What's your favorite childhood memory?",
                 category: .firstDate
             ),
@@ -628,7 +628,7 @@ struct ConversationCard: View {
         )
         
         ConversationCard(
-            viewModel: CardViewModel.mock(
+            viewModel: CardViewModel.preview(
                 question: "What's something you're currently learning about yourself?",
                 category: .personalGrowth,
                 isFlipped: true
@@ -638,7 +638,7 @@ struct ConversationCard: View {
         )
         
         ConversationCard(
-            viewModel: CardViewModel.mock(
+            viewModel: CardViewModel.preview(
                 question: "If you could be any fictional character for a day, who would you choose?",
                 category: .funAndPlayful
             ),

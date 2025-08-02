@@ -219,14 +219,14 @@ public final class CardViewModel: ObservableObject {
 
 #if DEBUG
 extension CardViewModel {
-    /// Creates a mock CardViewModel for SwiftUI previews
-    static func mock(
+    /// Creates a preview CardViewModel for SwiftUI previews
+    static func preview(
         question: String = "What's something you've learned about yourself in the past year?",
         category: QuestionCategory = .personalGrowth,
         isFlipped: Bool = false,
         isLoading: Bool = false
     ) -> CardViewModel {
-        let viewModel = CardViewModel(questionEngine: MockQuestionEngine())
+        let viewModel = CardViewModel()
         viewModel.question = question
         viewModel.displayedQuestion = isLoading ? "" : question
         viewModel.category = category
@@ -234,51 +234,6 @@ extension CardViewModel {
         viewModel.isLoading = isLoading
         viewModel.revealProgress = isLoading ? 0.0 : 1.0
         return viewModel
-    }
-}
-
-/// Mock QuestionEngine for previews and testing
-private class MockQuestionEngine: QuestionEngine {
-    func generateQuestion(for category: QuestionCategory) async throws -> String {
-        // Simulate network delay
-        try await Task.sleep(nanoseconds: 1_000_000_000)
-        
-        let mockQuestions: [QuestionCategory: [String]] = [
-            .firstDate: [
-                "What's something that always makes you laugh?",
-                "If you could travel anywhere right now, where would you go?",
-                "What's your favorite way to spend a weekend?"
-            ],
-            .personalGrowth: [
-                "What's something you've learned about yourself in the past year?",
-                "What habit would you most like to develop?",
-                "What's a fear you've overcome recently?"
-            ],
-            .deepCouple: [
-                "What's something you appreciate about our relationship that you rarely mention?",
-                "How do you prefer to be comforted when you're feeling down?",
-                "What's a dream you have that you've never shared with me?"
-            ]
-        ]
-        
-        let questions = mockQuestions[category] ?? ["What's on your mind today?"]
-        return questions.randomElement() ?? "What's on your mind today?"
-    }
-    
-    func generateQuestion(with configuration: QuestionConfiguration) async throws -> QuestionResult {
-        let question = try await generateQuestion(for: configuration.category)
-        let metadata = ProcessingMetadata(
-            promptUsed: "Mock prompt",
-            rawLLMResponse: question,
-            processingDuration: 1.0
-        )
-        
-        return QuestionResult(
-            question: question,
-            category: configuration.category,
-            configuration: configuration,
-            processingMetadata: metadata
-        )
     }
 }
 #endif

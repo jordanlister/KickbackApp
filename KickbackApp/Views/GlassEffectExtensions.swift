@@ -23,6 +23,7 @@ extension View {
                     .fill(tint)
                     .blendMode(.overlay)
                     .id(glassID ?? UUID().uuidString)
+                    .allowsHitTesting(false)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
@@ -39,6 +40,7 @@ extension View {
                         lineWidth: style.borderWidth
                     )
                     .id("border_\(glassID ?? UUID().uuidString)")
+                    .allowsHitTesting(false)
             )
     }
     
@@ -81,5 +83,6 @@ struct GlassEffectContainer<Content: View>: View {
                 style: .regular,
                 tint: Color("BrandPurple").opacity(0.05)
             )
+            .allowsHitTesting(true)
     }
 }

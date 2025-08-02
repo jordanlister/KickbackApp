@@ -76,7 +76,6 @@ struct CardDeckView: View {
             .animation(.spring(response: 0.8, dampingFraction: 0.9), value: mainViewModel.showModeSelection)
             .animation(.spring(response: 0.8, dampingFraction: 0.9), value: mainViewModel.showCards)
         }
-        .gesture(refreshGesture)
         .onChange(of: dragOffset) { _, newValue in
             updateRefreshOffset(newValue)
         }
@@ -247,6 +246,9 @@ struct CardDeckView: View {
             }
         }
         .frame(height: topHeight)
+        .gesture(
+            mainViewModel.selectedCardIndex == nil ? refreshGesture : nil
+        )
     }
     
     /// Bottom 1/3 horizontal card deck with glass morphism
@@ -260,14 +262,15 @@ struct CardDeckView: View {
                     KickbackCardView(
                         viewModel: cardViewModel,
                         cardIndex: index,
-                        isBack: true
+                        isBack: true,
+                        onTap: {
+                            print("Card \(index) tapped - executing handleCardTap") // Debug log
+                            handleCardTap(at: index)
+                        }
                     )
                     .matchedGeometryEffect(id: "card_\(index)", in: cardNamespace)
                     .matchedGeometryEffect(id: "glass_card_\(index)", in: cardNamespace)
                     .frame(width: cardWidth, height: cardHeight)
-                    .onTapGesture {
-                        handleCardTap(at: index)
-                    }
                 } else {
                     // Invisible placeholder to maintain layout
                     Rectangle()
@@ -415,13 +418,22 @@ struct CardDeckView: View {
     
     /// Handles card tap with haptic feedback and flip animation
     private func handleCardTap(at index: Int) {
-        // Prevent interaction during refresh
-        guard !isRefreshing else { return }
+        print("handleCardTap called for index: \(index), isRefreshing: \(isRefreshing)") // Debug log
+        
+        // Prevent interaction during refresh only - allow taps during card transitions
+        guard !isRefreshing else { 
+            print("Card tap blocked - refreshing in progress") // Debug log
+            return 
+        }
         
         if mainViewModel.selectedCardIndex == index {
             // Tapping selected card deselects it
             handleCardClose()
         } else {
+            // Provide immediate haptic feedback for better responsiveness
+            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+            impactFeedback.impactOccurred()
+            
             // Select the tapped card with smooth matched geometry animation
             withAnimation(matchedGeometryAnimation) {
                 mainViewModel.selectCard(at: index)
@@ -431,6 +443,10 @@ struct CardDeckView: View {
     
     /// Handles card close with optimized animation
     private func handleCardClose() {
+        // Add haptic feedback for card close
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.impactOccurred()
+        
         withAnimation(matchedGeometryAnimation) {
             mainViewModel.deselectAllCards()
         }
@@ -492,32 +508,44 @@ private extension Array {
     }
 }
 
+/// Conditional view modifier extension for gesture handling
+extension View {
+    @ViewBuilder
+    func onlyIf<Content: View>(_ condition: Bool, transform: (Self) -> Content) -> some View {
+        if condition {
+            transform(self)
+        } else {
+            self
+        }
+    }
+}
+
 // MARK: - Preview Support
 
 #Preview("Mode Selection Interface") {
-    CardDeckView(mainViewModel: MainContentViewModel.mock(showModeSelection: true, showCards: false))
+    CardDeckView(mainViewModel: MainContentViewModel.preview(showModeSelection: true, showCards: false))
         .preferredColorScheme(.light)
 }
 
 #Preview("Card Deck - Default") {
-    CardDeckView(mainViewModel: MainContentViewModel.mock(showModeSelection: false, showCards: true))
+    CardDeckView(mainViewModel: MainContentViewModel.preview(showModeSelection: false, showCards: true))
         .preferredColorScheme(.light)
 }
 
 #Preview("Card Deck - Expanded Card") {
-    CardDeckView(mainViewModel: MainContentViewModel.mock(selectedCardIndex: 1, showModeSelection: false, showCards: true))
+    CardDeckView(mainViewModel: MainContentViewModel.preview(selectedCardIndex: 1, showModeSelection: false, showCards: true))
         .preferredColorScheme(.light)
 }
 
 #Preview("Card Deck - Empty State") {
-    let emptyViewModel = MainContentViewModel.mock(showModeSelection: false, showCards: true)
+    let emptyViewModel = MainContentViewModel.preview(showModeSelection: false, showCards: true)
     emptyViewModel.cardViewModels = []
     return CardDeckView(mainViewModel: emptyViewModel)
         .preferredColorScheme(.light)
 }
 
 #Preview("Complete Interface Flow") {
-    CardDeckView(mainViewModel: MainContentViewModel.mock(showModeSelection: false, showCards: true))
+    CardDeckView(mainViewModel: MainContentViewModel.preview(showModeSelection: false, showCards: true))
         .preferredColorScheme(.light)
         .statusBarHidden()
 }

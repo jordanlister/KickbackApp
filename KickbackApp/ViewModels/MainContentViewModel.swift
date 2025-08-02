@@ -88,17 +88,24 @@ public final class MainContentViewModel: ObservableObject {
         // Initialize cards after launch animation
         await initializeCards()
         
-        // Hide launch animation and show main interface
+        // Hide launch animation and show mode selection
         withAnimation(.easeInOut(duration: 0.8)) {
             showLaunchAnimation = false
             isInitializing = false
+            showModeSelection = true
+            showCards = false
         }
     }
     
     /// Selects a card and triggers flip animation with question loading
     /// - Parameter index: Index of the card to select
     func selectCard(at index: Int) {
-        guard index < cardViewModels.count && !isAnimatingCardTransition else { return }
+        print("selectCard called for index: \(index), cardCount: \(cardViewModels.count), isAnimating: \(isAnimatingCardTransition)") // Debug log
+        
+        guard index < cardViewModels.count && !isAnimatingCardTransition else { 
+            print("selectCard blocked - invalid index or animating") // Debug log
+            return 
+        }
         
         isAnimatingCardTransition = true
         
@@ -118,9 +125,9 @@ public final class MainContentViewModel: ObservableObject {
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
         
-        // Reset animation flag after transition completes
+        // Reset animation flag after transition completes - reduced time for better responsiveness
         Task {
-            try? await Task.sleep(nanoseconds: 800_000_000) // Match animation duration
+            try? await Task.sleep(nanoseconds: 400_000_000) // 0.4 seconds - allow quicker subsequent interactions
             await MainActor.run {
                 isAnimatingCardTransition = false
             }
@@ -132,8 +139,8 @@ public final class MainContentViewModel: ObservableObject {
             cardVM.setLoadingState(for: cardVM.category)
             
             Task {
-                // Wait for animation to complete before starting generation
-                try? await Task.sleep(nanoseconds: 800_000_000) // 0.8 seconds
+                // Wait for animation to start before starting generation for better UX
+                try? await Task.sleep(nanoseconds: 400_000_000) // 0.4 seconds - start loading mid-animation
                 await cardVM.loadQuestion(for: cardVM.category)
             }
         }
@@ -152,9 +159,9 @@ public final class MainContentViewModel: ObservableObject {
             }
         }
         
-        // Reset animation flag after transition completes
+        // Reset animation flag after transition completes - reduced time for better responsiveness
         Task {
-            try? await Task.sleep(nanoseconds: 800_000_000) // Match animation duration
+            try? await Task.sleep(nanoseconds: 400_000_000) // 0.4 seconds - allow quicker subsequent interactions
             await MainActor.run {
                 isAnimatingCardTransition = false
             }
@@ -303,15 +310,15 @@ public final class MainContentViewModel: ObservableObject {
 
 #if DEBUG
 extension MainContentViewModel {
-    /// Creates a mock MainContentViewModel for SwiftUI previews
-    static func mock(
+    /// Creates a preview MainContentViewModel for SwiftUI previews
+    static func preview(
         showLaunchAnimation: Bool = false,
         isInitializing: Bool = false,
         selectedCardIndex: Int? = nil,
         showModeSelection: Bool = false,
         showCards: Bool = true
     ) -> MainContentViewModel {
-        let viewModel = MainContentViewModel(questionEngine: MockQuestionEngine())
+        let viewModel = MainContentViewModel()
         viewModel.showLaunchAnimation = showLaunchAnimation
         viewModel.isInitializing = isInitializing
         viewModel.selectedCardIndex = selectedCardIndex
@@ -319,75 +326,18 @@ extension MainContentViewModel {
         viewModel.showCards = showCards
         viewModel.launchAnimationProgress = showLaunchAnimation ? 0.5 : 1.0
         
-        // Setup mock cards
-        viewModel.cardViewModels = [
-            CardViewModel.mock(
-                question: "What's something that always makes you laugh?",
-                category: .firstDate,
-                isFlipped: selectedCardIndex == 0
-            ),
-            CardViewModel.mock(
-                question: "What's something you've learned about yourself recently?",
-                category: .personalGrowth,
-                isFlipped: selectedCardIndex == 1
-            ),
-            CardViewModel.mock(
-                question: "If you could have any superpower for a day, what would it be?",
-                category: .funAndPlayful,
-                isFlipped: selectedCardIndex == 2
-            )
-        ]
+        // Setup preview cards with placeholder content
+        for (index, category) in [QuestionCategory.firstDate, .personalGrowth, .funAndPlayful].enumerated() {
+            if index < viewModel.cardViewModels.count {
+                viewModel.cardViewModels[index].category = category
+                viewModel.cardViewModels[index].question = "Preview question for \(category.rawValue)"
+                viewModel.cardViewModels[index].displayedQuestion = "Preview question for \(category.rawValue)"
+                viewModel.cardViewModels[index].isFlipped = selectedCardIndex == index
+                viewModel.cardViewModels[index].revealProgress = 1.0
+            }
+        }
         
         return viewModel
-    }
-}
-
-/// Mock QuestionEngine for previews (shared with CardViewModel)
-private class MockQuestionEngine: QuestionEngine {
-    func generateQuestion(for category: QuestionCategory) async throws -> String {
-        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
-        
-        let mockQuestions: [QuestionCategory: [String]] = [
-            .firstDate: [
-                "What's something that always makes you laugh?",
-                "If you could travel anywhere right now, where would you go?",
-                "What's your favorite way to spend a weekend?"
-            ],
-            .personalGrowth: [
-                "What's something you've learned about yourself in the past year?",
-                "What habit would you most like to develop?",
-                "What's a fear you've overcome recently?"
-            ],
-            .funAndPlayful: [
-                "If you could have any superpower for a day, what would it be?",
-                "What's the most spontaneous thing you've ever done?",
-                "If you were a character in a movie, what genre would it be?"
-            ],
-            .deepCouple: [
-                "What's something you appreciate about our relationship that you rarely mention?",
-                "How do you prefer to be comforted when you're feeling down?",
-                "What's a dream you have that you've never shared with me?"
-            ]
-        ]
-        
-        let questions = mockQuestions[category] ?? ["What's on your mind today?"]
-        return questions.randomElement() ?? "What's on your mind today?"
-    }
-    
-    func generateQuestion(with configuration: QuestionConfiguration) async throws -> QuestionResult {
-        let question = try await generateQuestion(for: configuration.category)
-        let metadata = ProcessingMetadata(
-            promptUsed: "Mock prompt",
-            rawLLMResponse: question,
-            processingDuration: 0.5
-        )
-        
-        return QuestionResult(
-            question: question,
-            category: configuration.category,
-            configuration: configuration,
-            processingMetadata: metadata
-        )
     }
 }
 #endif

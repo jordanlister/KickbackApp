@@ -17,6 +17,9 @@ public protocol QuestionEngine {
     /// - Returns: A question result with metadata
     /// - Throws: QuestionEngineError for various failure scenarios
     func generateQuestion(with configuration: QuestionConfiguration) async throws -> QuestionResult
+    
+    /// Manually resets the context window for memory management
+    func resetContext() async
 }
 
 // MARK: - Question Engine Service Implementation
@@ -37,6 +40,11 @@ public final class QuestionEngineService: QuestionEngine {
     
     private let maxRetryAttempts: Int
     private let requestTimeout: TimeInterval
+    
+    // MARK: - Context Management
+    
+    private let maxQuestionsBeforeReset: Int = 6 // Reset after 6 questions to manage context window
+    private let contextActor = ContextActor()
     
     // MARK: - Initialization
     
@@ -75,6 +83,14 @@ public final class QuestionEngineService: QuestionEngine {
         
         logger.info("Starting question generation for category: \(configuration.category.rawValue)")
         
+        // Check if we need to reset the context window
+        let currentCount = await contextActor.getCurrentCount()
+        
+        if currentCount >= maxQuestionsBeforeReset {
+            logger.info("Context window approaching limit (\(currentCount)/\(self.maxQuestionsBeforeReset)). Resetting session...")
+            await resetContextWindow()
+        }
+        
         do {
             // Process the prompt template
             let prompt = promptProcessor.processTemplate(for: configuration)
@@ -106,12 +122,22 @@ public final class QuestionEngineService: QuestionEngine {
                 processingMetadata: metadata
             )
             
-            logger.info("Question generation completed successfully in \(processingDuration, privacy: .public)s")
+            // Increment question counter for context management
+            let totalQuestions = await contextActor.incrementCount()
+            
+            logger.info("Question generation completed successfully in \(processingDuration, privacy: .public)s (Total: \(totalQuestions))")
             return result
             
         } catch {
             let processingDuration = Date().timeIntervalSince(startTime)
             logger.error("Question generation failed after \(processingDuration, privacy: .public)s: \(error.localizedDescription)")
+            
+            // Check if this is a context window error and reset if needed
+            if error.localizedDescription.contains("Exceeded model context window size") || 
+               error.localizedDescription.contains("context window") {
+                logger.warning("Context window exceeded - forcing reset for next generation")
+                await resetContextWindow()
+            }
             
             // Re-throw as QuestionEngineError if not already
             if let questionError = error as? QuestionEngineError {
@@ -122,7 +148,24 @@ public final class QuestionEngineService: QuestionEngine {
         }
     }
     
+    public func resetContext() async {
+        await resetContextWindow()
+    }
+    
     // MARK: - Private Methods
+    
+    /// Resets the context window to prevent memory overflow
+    private func resetContextWindow() async {
+        logger.info("Resetting LLM context window to manage memory")
+        
+        // Reset the LLM session to clear context
+        llmService.resetSession()
+        
+        // Reset our question counter
+        await contextActor.resetCount()
+        
+        logger.info("Context window reset completed")
+    }
     
     /// Generates LLM response with retry logic for handling transient failures
     private func generateWithRetry(prompt: String) async throws -> String {
@@ -142,12 +185,24 @@ public final class QuestionEngineService: QuestionEngine {
                 lastError = error
                 logger.warning("Attempt \(attempt) failed: \(error.localizedDescription)")
                 
+                // For context window errors, reset immediately and retry without delay
+                if error.localizedDescription.contains("Exceeded model context window size") || 
+                   error.localizedDescription.contains("context window") {
+                    logger.warning("Context window error detected - resetting session before retry")
+                    llmService.resetSession()
+                    await contextActor.resetCount()
+                }
+                
                 // Don't retry on the last attempt
                 if attempt <= maxRetryAttempts {
-                    // Exponential backoff with jitter
-                    let delay = min(pow(2.0, Double(attempt - 1)), 8.0) + Double.random(in: 0...1)
-                    logger.debug("Retrying after \(delay, privacy: .public)s delay")
-                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                    // For context window errors, retry immediately. Otherwise use exponential backoff
+                    if error.localizedDescription.contains("context window") {
+                        logger.debug("Retrying immediately after context reset")
+                    } else {
+                        let delay = min(pow(2.0, Double(attempt - 1)), 8.0) + Double.random(in: 0...1)
+                        logger.debug("Retrying after \(delay, privacy: .public)s delay")
+                        try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                    }
                 }
             }
         }
@@ -415,5 +470,25 @@ public enum QuestionEngineError: LocalizedError, Equatable {
         default:
             return false
         }
+    }
+}
+
+// MARK: - Context Management Actor
+
+/// Actor for thread-safe context management in async environments
+private actor ContextActor {
+    private var count: Int = 0
+    
+    func getCurrentCount() -> Int {
+        return count
+    }
+    
+    func incrementCount() -> Int {
+        count += 1
+        return count
+    }
+    
+    func resetCount() {
+        count = 0
     }
 }

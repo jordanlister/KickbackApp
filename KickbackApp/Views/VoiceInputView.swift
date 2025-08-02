@@ -296,7 +296,7 @@ extension CardViewModel {
         voiceAnswer: String = "",
         voicePermissionsGranted: Bool = false
     ) -> CardViewModel {
-        let viewModel = CardViewModel.mock(question: question, category: category)
+        let viewModel = CardViewModel.preview(question: question, category: category)
         viewModel.isVoiceInputMode = isVoiceInputMode
         viewModel.voiceAnswer = voiceAnswer
         viewModel.voicePermissionsGranted = voicePermissionsGranted
