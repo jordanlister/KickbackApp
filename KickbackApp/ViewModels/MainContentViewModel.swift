@@ -200,6 +200,12 @@ public final class MainContentViewModel: ObservableObject {
     
     /// Refreshes all cards with new questions (swipe-to-refresh functionality)
     func refreshAllCards() async {
+        // Don't refresh cards if game is complete or analysis is in progress
+        guard !isAnalyzingGame && !showGameResults else {
+            print("Skipping card refresh - game analysis in progress or complete")
+            return
+        }
+        
         let refreshCategories = getRandomCategories()
         
         await withTaskGroup(of: Void.self) { group in
@@ -347,6 +353,14 @@ public final class MainContentViewModel: ObservableObject {
         }
     }
     
+    /// Stops all card loading and question generation
+    private func stopAllCardLoading() {
+        print("🛑 Stopping all card loading and question generation")
+        for cardVM in cardViewModels {
+            cardVM.isLoading = false
+        }
+    }
+    
     /// Performs comprehensive game completion analysis
     @MainActor
     private func performGameCompletionAnalysis() async {
@@ -358,6 +372,9 @@ public final class MainContentViewModel: ObservableObject {
         print("🎯 Starting game completion analysis with \(completedCardAnswers.count) answers...")
         isAnalyzingGame = true
         gameAnalysisError = nil
+        
+        // Stop all card loading and question generation immediately
+        stopAllCardLoading()
         
         // Show results screen immediately to indicate processing
         withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {

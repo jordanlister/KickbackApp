@@ -103,6 +103,12 @@ public final class CardViewModel: ObservableObject {
             setLoadingState(for: category)
         }
         
+        // Check if loading was cancelled (e.g., during game completion)
+        guard isLoading else {
+            print("Question loading cancelled for category: \(category.displayName)")
+            return
+        }
+        
         do {
             let newQuestion = try await questionEngine.generateQuestion(for: category)
             
