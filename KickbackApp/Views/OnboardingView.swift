@@ -20,13 +20,8 @@ struct OnboardingView: View {
     /// Callback for onboarding completion
     let onComplete: () -> Void
     
-    /// Gesture state for swipe navigation
-    @GestureState private var dragOffset: CGSize = .zero
-    @State private var currentDragAmount: CGFloat = 0.0
-    
     /// Animation constants
     private let pageTransitionDuration: Double = 0.6
-    private let swipeThreshold: CGFloat = 100
     
     // MARK: - Body
     
@@ -55,7 +50,6 @@ struct OnboardingView: View {
                 }
             }
         }
-        .gesture(swipeGesture)
         .onChange(of: viewModel.isOnboardingCompleted) { _, isCompleted in
             if isCompleted {
                 onComplete()
@@ -63,7 +57,7 @@ struct OnboardingView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Onboarding flow")
-        .accessibilityHint("Swipe left and right to navigate between pages")
+        .accessibilityHint("Use Next and Previous buttons to navigate between pages")
     }
     
     // MARK: - Subviews
@@ -155,7 +149,7 @@ struct OnboardingView: View {
                 }
             }
             .offset(
-                x: -CGFloat(viewModel.currentPage) * geometry.size.width + currentDragAmount + dragOffset.width
+                x: -CGFloat(viewModel.currentPage) * geometry.size.width
             )
             .animation(
                 viewModel.isTransitioning ? 
@@ -309,7 +303,7 @@ struct OnboardingView: View {
     /// Text for the main action button
     private var buttonText: String {
         if viewModel.isLastPage {
-            return viewModel.canProceedToNext ? "Get Started" : "Allow Access"
+            return viewModel.canProceedToNext ? "Begin" : "Allow Access"
         } else {
             return "Next"
         }
@@ -344,35 +338,6 @@ struct OnboardingView: View {
         }
     }
     
-    /// Swipe gesture for page navigation
-    private var swipeGesture: some Gesture {
-        DragGesture()
-            .updating($dragOffset) { value, state, _ in
-                state = value.translation
-                currentDragAmount = value.translation.width
-            }
-            .onEnded { value in
-                let horizontalAmount = value.translation.width
-                let horizontalStrength = value.velocity.width
-                
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                    currentDragAmount = 0.0
-                }
-                
-                // Determine swipe direction and strength
-                if horizontalAmount > swipeThreshold || horizontalStrength > 300 {
-                    // Swipe right - go to previous page
-                    if viewModel.currentPage > 0 {
-                        viewModel.previousPage()
-                    }
-                } else if horizontalAmount < -swipeThreshold || horizontalStrength < -300 {
-                    // Swipe left - go to next page
-                    if viewModel.currentPage < viewModel.totalPages - 1 && canProceed {
-                        viewModel.nextPage()
-                    }
-                }
-            }
-    }
 }
 
 // MARK: - Preview Support

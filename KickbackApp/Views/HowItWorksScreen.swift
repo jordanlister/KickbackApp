@@ -69,18 +69,18 @@ struct HowItWorksScreen: View {
             ScrollView {
                 VStack(spacing: 0) {
                     // Top spacing
-                    Spacer(minLength: 60)
+                    Spacer(minLength: 20)
                     
                     // Title section
                     titleSection
-                        .padding(.bottom, 40)
+                        .padding(.bottom, 20)
                     
                     // Steps section
                     stepsSection
                         .padding(.horizontal, 20)
                     
                     // Bottom spacing
-                    Spacer(minLength: 60)
+                    Spacer(minLength: 20)
                 }
                 .frame(minHeight: geometry.size.height)
             }
@@ -110,7 +110,7 @@ struct HowItWorksScreen: View {
     private var titleSection: some View {
         VStack(spacing: 12) {
             Text("How It Works")
-                .font(.system(size: 36, weight: .bold, design: .rounded))
+                .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundStyle(
                     LinearGradient(
                         colors: [
@@ -123,7 +123,7 @@ struct HowItWorksScreen: View {
                 )
             
             Text("Three simple steps to meaningful conversation")
-                .font(.system(size: 18, weight: .medium))
+                .font(.system(size: 16, weight: .medium))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
         }
@@ -146,7 +146,7 @@ struct HowItWorksScreen: View {
             // Connecting line 1
             connectingLine
                 .opacity(connectingLine1Opacity)
-                .padding(.vertical, 20)
+                .padding(.vertical, 10)
             
             // Step 2
             workflowStepView(
@@ -158,7 +158,7 @@ struct HowItWorksScreen: View {
             // Connecting line 2
             connectingLine
                 .opacity(connectingLine2Opacity)
-                .padding(.vertical, 20)
+                .padding(.vertical, 10)
             
             // Step 3
             workflowStepView(
@@ -172,7 +172,7 @@ struct HowItWorksScreen: View {
     /// Individual workflow step view with glass morphism
     @ViewBuilder
     private func workflowStepView(step: WorkflowStep, opacity: Double, scale: CGFloat) -> some View {
-        HStack(spacing: 20) {
+        HStack(spacing: 16) {
             // Step number and icon
             ZStack {
                 Circle()
@@ -191,7 +191,7 @@ struct HowItWorksScreen: View {
                                 lineWidth: 2
                             )
                     )
-                    .frame(width: 60, height: 60)
+                    .frame(width: 50, height: 50)
                     .shadow(
                         color: step.color.opacity(0.3),
                         radius: 8,
@@ -200,12 +200,12 @@ struct HowItWorksScreen: View {
                     )
                 
                 Image(systemName: step.iconName)
-                    .font(.system(size: 24, weight: .medium))
+                    .font(.system(size: 20, weight: .medium))
                     .foregroundColor(step.color)
             }
             
             // Step content
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     // Step number badge
                     Text("\(step.number)")
@@ -218,14 +218,14 @@ struct HowItWorksScreen: View {
                         )
                     
                     Text(step.title)
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.primary)
                     
                     Spacer()
                 }
                 
                 Text(step.description)
-                    .font(.system(size: 16, weight: .regular))
+                    .font(.system(size: 14, weight: .regular))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.leading)
                     .lineSpacing(2)
@@ -233,8 +233,8 @@ struct HowItWorksScreen: View {
             
             Spacer()
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 20)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
         .glassEffect(
             style: .regular,
             tint: step.color.opacity(0.08)
