@@ -42,6 +42,9 @@ public final class MainContentViewModel: ObservableObject {
     /// Error state for critical app failures
     @Published var criticalError: String?
     
+    /// Onboarding state management
+    @Published var showOnboarding: Bool = false
+    
     // MARK: - Animation Properties
     
     /// Controls staggered card entrance animations
@@ -82,6 +85,9 @@ public final class MainContentViewModel: ObservableObject {
         
         // Initialize gameplay integration
         gameplayIntegration = GameplayIntegration(mainContentViewModel: self)
+        
+        // Check if onboarding should be shown
+        checkOnboardingStatus()
     }
     
     // MARK: - Public Methods
@@ -275,6 +281,20 @@ public final class MainContentViewModel: ObservableObject {
         }
     }
     
+    /// Handles onboarding completion and transitions to main app
+    func completeOnboarding() {
+        withAnimation(.spring(response: 0.8, dampingFraction: 0.9)) {
+            showOnboarding = false
+        }
+        
+        // Start the launch sequence after onboarding is hidden
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            Task {
+                await self.startLaunchSequence()
+            }
+        }
+    }
+    
     // MARK: - Private Methods
     
     /// Sets up initial app state
@@ -284,6 +304,19 @@ public final class MainContentViewModel: ObservableObject {
         // Create card ViewModels
         cardViewModels = (0..<cardCount).map { _ in
             CardViewModel(questionEngine: questionEngine)
+        }
+    }
+    
+    /// Checks if onboarding should be shown based on UserDefaults
+    private func checkOnboardingStatus() {
+        let hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "KickbackOnboardingCompleted")
+        showOnboarding = !hasCompletedOnboarding
+        
+        // If onboarding is not needed, we can show the launch animation immediately
+        if hasCompletedOnboarding {
+            showLaunchAnimation = true
+        } else {
+            showLaunchAnimation = false
         }
     }
     
@@ -367,7 +400,8 @@ extension MainContentViewModel {
         isInitializing: Bool = false,
         selectedCardIndex: Int? = nil,
         showModeSelection: Bool = false,
-        showCards: Bool = true
+        showCards: Bool = true,
+        showOnboarding: Bool = false
     ) -> MainContentViewModel {
         let viewModel = MainContentViewModel()
         viewModel.showLaunchAnimation = showLaunchAnimation
@@ -375,6 +409,7 @@ extension MainContentViewModel {
         viewModel.selectedCardIndex = selectedCardIndex
         viewModel.showModeSelection = showModeSelection
         viewModel.showCards = showCards
+        viewModel.showOnboarding = showOnboarding
         viewModel.launchAnimationProgress = showLaunchAnimation ? 0.5 : 1.0
         
         // Setup preview cards with placeholder content

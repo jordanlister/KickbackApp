@@ -24,7 +24,14 @@ struct ContentView: View {
     
     var body: some View {
         ZStack {
-            if mainViewModel.showLaunchAnimation {
+            if mainViewModel.showOnboarding {
+                // Onboarding flow
+                OnboardingView(onComplete: {
+                    mainViewModel.completeOnboarding()
+                })
+                .transition(.opacity)
+                .zIndex(2)
+            } else if mainViewModel.showLaunchAnimation {
                 // Launch animation overlay
                 LaunchAnimationView(progress: mainViewModel.launchAnimationProgress)
                     .transition(.opacity)
@@ -36,8 +43,8 @@ struct ContentView: View {
                     .zIndex(0)
             }
             
-            // Global navigation button - only show when not in launch animation
-            if !mainViewModel.showLaunchAnimation {
+            // Global navigation button - only show when not in onboarding or launch animation
+            if !mainViewModel.showOnboarding && !mainViewModel.showLaunchAnimation {
                 VStack {
                     HStack {
                         Spacer()
@@ -83,6 +90,7 @@ struct ContentView: View {
             }
         }
         .animation(.easeInOut(duration: 0.8), value: mainViewModel.showLaunchAnimation)
+        .animation(.easeInOut(duration: 0.8), value: mainViewModel.showOnboarding)
         .onAppear {
             startAppIfNeeded()
         }
