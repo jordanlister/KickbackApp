@@ -6,14 +6,6 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		7D43CAC52E3CAB4A003E54F2 /* MLX in Frameworks */ = {isa = PBXBuildFile; productRef = 7D43CABD2E3CA5C1003E54F2 /* MLX */; };
-		7D43CAC62E3CAB4A003E54F2 /* MLXNN in Frameworks */ = {isa = PBXBuildFile; productRef = 7D43CABE2E3CA5C1003E54F2 /* MLXNN */; };
-		7D43CAC72E3CAB4A003E54F2 /* MLXOptimizers in Frameworks */ = {isa = PBXBuildFile; productRef = 7D43CABF2E3CA5C1003E54F2 /* MLXOptimizers */; };
-		7D43CAC82E3CAB4A003E54F2 /* MLXFFT in Frameworks */ = {isa = PBXBuildFile; productRef = 7D43CAC02E3CA5C1003E54F2 /* MLXFFT */; };
-		7D43CAC92E3CAB4A003E54F2 /* MLXRandom in Frameworks */ = {isa = PBXBuildFile; productRef = 7D43CAC12E3CA5C1003E54F2 /* MLXRandom */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXContainerItemProxy section */
 		7D43CAA02E3CA5C0003E54F2 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -60,11 +52,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7D43CAC92E3CAB4A003E54F2 /* MLXRandom in Frameworks */,
-				7D43CAC82E3CAB4A003E54F2 /* MLXFFT in Frameworks */,
-				7D43CAC72E3CAB4A003E54F2 /* MLXOptimizers in Frameworks */,
-				7D43CAC62E3CAB4A003E54F2 /* MLXNN in Frameworks */,
-				7D43CAC52E3CAB4A003E54F2 /* MLX in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -125,11 +112,6 @@
 			);
 			name = KickbackApp;
 			packageProductDependencies = (
-				7D43CABD2E3CA5C1003E54F2 /* MLX */,
-				7D43CABE2E3CA5C1003E54F2 /* MLXNN */,
-				7D43CABF2E3CA5C1003E54F2 /* MLXOptimizers */,
-				7D43CAC02E3CA5C1003E54F2 /* MLXFFT */,
-				7D43CAC12E3CA5C1003E54F2 /* MLXRandom */,
 			);
 			productName = KickbackApp;
 			productReference = 7D43CA922E3CA5BF003E54F2 /* KickbackApp.app */;
@@ -214,7 +196,6 @@
 			mainGroup = 7D43CA892E3CA5BF003E54F2;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				7D43CABC2E3CA5C1003E54F2 /* XCRemoteSwiftPackageReference "mlx-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7D43CA932E3CA5BF003E54F2 /* Products */;
@@ -343,7 +324,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -401,7 +382,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -426,6 +407,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -437,6 +419,10 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.alistcreative.KickbackApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -458,6 +444,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -469,6 +456,10 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.alistcreative.KickbackApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -587,45 +578,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		7D43CABC2E3CA5C1003E54F2 /* XCRemoteSwiftPackageReference "mlx-swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/ml-explore/mlx-swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.23.0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		7D43CABD2E3CA5C1003E54F2 /* MLX */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 7D43CABC2E3CA5C1003E54F2 /* XCRemoteSwiftPackageReference "mlx-swift" */;
-			productName = MLX;
-		};
-		7D43CABE2E3CA5C1003E54F2 /* MLXNN */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 7D43CABC2E3CA5C1003E54F2 /* XCRemoteSwiftPackageReference "mlx-swift" */;
-			productName = MLXNN;
-		};
-		7D43CABF2E3CA5C1003E54F2 /* MLXOptimizers */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 7D43CABC2E3CA5C1003E54F2 /* XCRemoteSwiftPackageReference "mlx-swift" */;
-			productName = MLXOptimizers;
-		};
-		7D43CAC02E3CA5C1003E54F2 /* MLXFFT */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 7D43CABC2E3CA5C1003E54F2 /* XCRemoteSwiftPackageReference "mlx-swift" */;
-			productName = MLXFFT;
-		};
-		7D43CAC12E3CA5C1003E54F2 /* MLXRandom */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 7D43CABC2E3CA5C1003E54F2 /* XCRemoteSwiftPackageReference "mlx-swift" */;
-			productName = MLXRandom;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 7D43CA8A2E3CA5BF003E54F2 /* Project object */;
 }
