@@ -30,6 +30,7 @@ public final class MainContentViewModel: ObservableObject {
     /// Mode selection state management
     @Published var selectedMode: ConversationMode? = nil
     @Published var showModeSelection: Bool = true
+    @Published var showPlayerSetup: Bool = false
     @Published var showCards: Bool = false
     
     /// Global loading state for initial app setup
@@ -65,6 +66,11 @@ public final class MainContentViewModel: ObservableObject {
     
     private let questionEngine: QuestionEngine
     
+    // MARK: - Gameplay Integration
+    
+    @Published var gameplayIntegration = GameplayIntegration()
+    @Published var playerManager = PlayerManager()
+    
     // MARK: - Initialization
     
     /// Initializes MainContentViewModel with dependency injection
@@ -73,6 +79,9 @@ public final class MainContentViewModel: ObservableObject {
         // Use real QuestionEngineService for actual AI-powered question generation
         self.questionEngine = questionEngine ?? QuestionEngineService()
         setupInitialState()
+        
+        // Initialize gameplay integration
+        gameplayIntegration = GameplayIntegration(mainContentViewModel: self)
     }
     
     // MARK: - Public Methods
@@ -211,16 +220,58 @@ public final class MainContentViewModel: ObservableObject {
             showModeSelection = false
         }
         
-        // After pills disappear, slide cards up from bottom
+        // After pills disappear, show player setup
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             withAnimation(.spring(response: 0.8, dampingFraction: 0.9)) {
-                self.showCards = true
+                self.showPlayerSetup = true
             }
         }
         
         // Update cards with mode-specific categories
         Task {
             await updateCardsForMode(mode)
+        }
+    }
+    
+    /// Returns to mode selection screen
+    func returnToModeSelection() {
+        // First hide cards and deselect any selected card
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+            showCards = false
+            selectedCardIndex = nil
+        }
+        
+        // Reset selected mode and show mode selection
+        selectedMode = nil
+        
+        // After cards disappear, show mode selection
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation(.spring(response: 0.8, dampingFraction: 0.9)) {
+                self.showModeSelection = true
+            }
+        }
+        
+        // Reset all cards to initial state
+        for cardVM in cardViewModels {
+            cardVM.reset()
+        }
+    }
+    
+    /// Handles completion of player setup and starts the game
+    func completePlayerSetup() {
+        // Enable turn-based mode
+        gameplayIntegration.enableTurnBasedMode()
+        
+        // Hide player setup and show cards with game start
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+            showPlayerSetup = false
+        }
+        
+        // After setup disappears, show cards
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation(.spring(response: 0.8, dampingFraction: 0.9)) {
+                self.showCards = true
+            }
         }
     }
     

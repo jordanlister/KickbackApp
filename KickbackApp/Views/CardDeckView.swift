@@ -16,16 +16,18 @@ struct CardDeckView: View {
     @ObservedObject var mainViewModel: MainContentViewModel
     @Namespace private var cardNamespace
     
-    /// Gesture state for swipe-to-refresh
+    /// Gesture state for swipe-to-refresh and card dismissal
     @GestureState private var dragOffset: CGSize = .zero
+    @GestureState private var cardDragOffset: CGSize = .zero
     @State private var refreshOffset: CGFloat = 0.0
     @State private var isRefreshing: Bool = false
+    @State private var cardDismissalOffset: CGFloat = 0.0
     
     /// Layout constants for modern design
     private let cardWidth: CGFloat = 100
     private let cardHeight: CGFloat = 140
-    private let expandedCardWidth: CGFloat = 320
-    private let expandedCardHeight: CGFloat = 400
+    private let expandedCardWidth: CGFloat = 380
+    private let expandedCardHeight: CGFloat = 680
     private let cardSpacing: CGFloat = 20
     private let deckPadding: CGFloat = 20
     private let refreshThreshold: CGFloat = 80
@@ -54,6 +56,9 @@ struct CardDeckView: View {
                 if mainViewModel.showModeSelection {
                     // Mode selection interface - inline with smooth animations
                     modeSelectionView(geometry: geometry)
+                } else if mainViewModel.showPlayerSetup {
+                    // Player setup interface
+                    playerSetupView(geometry: geometry)
                 } else {
                     // Main card interface
                     VStack(spacing: 0) {
@@ -74,10 +79,14 @@ struct CardDeckView: View {
             }
             .animation(matchedGeometryAnimation, value: mainViewModel.selectedCardIndex)
             .animation(.spring(response: 0.8, dampingFraction: 0.9), value: mainViewModel.showModeSelection)
+            .animation(.spring(response: 0.8, dampingFraction: 0.9), value: mainViewModel.showPlayerSetup)
             .animation(.spring(response: 0.8, dampingFraction: 0.9), value: mainViewModel.showCards)
         }
         .onChange(of: dragOffset) { _, newValue in
             updateRefreshOffset(newValue)
+        }
+        .onChange(of: cardDragOffset) { _, newValue in
+            updateCardDragFeedback(newValue)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Kickback card deck")
@@ -106,6 +115,34 @@ struct CardDeckView: View {
             
             Spacer()
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    /// Player setup view with smooth animations
+    private func playerSetupView(geometry: GeometryProxy) -> some View {
+        PlayerSetupView(
+            player1Name: $mainViewModel.playerManager.player1Name,
+            player1Gender: Binding(
+                get: { mainViewModel.playerManager.player1Pronouns.displayString },
+                set: { newValue in
+                    if let pronoun = PlayerPronouns.allCases.first(where: { $0.displayString == newValue }) {
+                        mainViewModel.playerManager.updatePlayer1Pronouns(pronoun)
+                    }
+                }
+            ),
+            player2Name: $mainViewModel.playerManager.player2Name,
+            player2Gender: Binding(
+                get: { mainViewModel.playerManager.player2Pronouns.displayString },
+                set: { newValue in
+                    if let pronoun = PlayerPronouns.allCases.first(where: { $0.displayString == newValue }) {
+                        mainViewModel.playerManager.updatePlayer2Pronouns(pronoun)
+                    }
+                }
+            ),
+            onSetupComplete: {
+                mainViewModel.completePlayerSetup()
+            }
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
@@ -206,10 +243,10 @@ struct CardDeckView: View {
         .animation(.easeInOut(duration: 0.2), value: refreshOffset)
     }
     
-    /// Top 2/3 area for expanded card or empty state
+    /// Top area for expanded card or empty state (increased to 80% for larger cards)
     @ViewBuilder
     private func topContentArea(geometry: GeometryProxy) -> some View {
-        let topHeight = geometry.size.height * 0.67
+        let topHeight = geometry.size.height * 0.80
         
         VStack {
             // Refresh indicator
@@ -222,7 +259,7 @@ struct CardDeckView: View {
             
             // Expanded card area or empty state
             if let selectedIndex = mainViewModel.selectedCardIndex {
-                // Show expanded card with glass morphing
+                // Show expanded card with glass morphing and drag dismissal
                 ConversationCard(
                     viewModel: mainViewModel.cardViewModels[selectedIndex],
                     cardIndex: selectedIndex,
@@ -231,6 +268,11 @@ struct CardDeckView: View {
                 .matchedGeometryEffect(id: "card_\(selectedIndex)", in: cardNamespace)
                 .matchedGeometryEffect(id: "glass_card_\(selectedIndex)", in: cardNamespace)
                 .frame(width: expandedCardWidth, height: expandedCardHeight)
+                .offset(y: cardDismissalOffset + cardDragOffset.height)
+                .scaleEffect(1.0 - abs(cardDragOffset.height) / 1200.0)
+                .opacity(1.0 - abs(cardDragOffset.height) / 1000.0)
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: cardDismissalOffset)
+                .gesture(cardDragGesture)
             } else if mainViewModel.cardViewModels.isEmpty {
                 // Empty state with koala mascot
                 emptyStateView
@@ -239,10 +281,9 @@ struct CardDeckView: View {
             
             Spacer()
             
-            // Close button when card is expanded - with glass effect
+            // Spacer for better layout when card is expanded
             if mainViewModel.selectedCardIndex != nil {
-                glassCloseButton
-                    .transition(.scale.combined(with: .opacity))
+                Spacer(minLength: 20)
             }
         }
         .frame(height: topHeight)
@@ -251,10 +292,10 @@ struct CardDeckView: View {
         )
     }
     
-    /// Bottom 1/3 horizontal card deck with glass morphism
+    /// Bottom horizontal card deck with glass morphism (reduced to 20% for larger expanded cards)
     @ViewBuilder
     private func bottomCardDeck(geometry: GeometryProxy) -> some View {
-        let bottomHeight = geometry.size.height * 0.33
+        let bottomHeight = geometry.size.height * 0.20
         
         HStack(spacing: cardSpacing) {
             ForEach(Array(mainViewModel.cardViewModels.enumerated()), id: \.element.id) { index, cardViewModel in
@@ -336,35 +377,6 @@ struct CardDeckView: View {
         .padding(.horizontal, 40)
     }
     
-    /// Glass close button for expanded card
-    @ViewBuilder
-    private var glassCloseButton: some View {
-        Button(action: {
-            handleCardClose()
-        }) {
-            HStack(spacing: 8) {
-                Image(systemName: "chevron.down")
-                    .font(.caption)
-                Text("Close")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-            }
-            .foregroundColor(.primary)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .glassEffect(
-                style: .regular,
-                tint: Color("BrandPurple").opacity(0.1)
-            )
-            .interactive()
-            .background(
-                Capsule()
-                    .fill(.ultraThinMaterial)
-                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-            )
-        }
-        .padding(.bottom, 20)
-    }
     
     /// Pull-to-refresh gesture with smooth swipe detection
     private var refreshGesture: some Gesture {
@@ -392,6 +404,42 @@ struct CardDeckView: View {
             }
     }
     
+    /// Card drag gesture for slide-down dismissal
+    private var cardDragGesture: some Gesture {
+        DragGesture()
+            .updating($cardDragOffset) { value, state, _ in
+                // Allow both upward and downward drags for natural feel
+                state = value.translation
+            }
+            .onEnded { value in
+                let velocity = value.predictedEndTranslation.height
+                let threshold: CGFloat = 120
+                let velocityThreshold: CGFloat = 250
+                
+                // Dismiss if dragged down far enough or with sufficient velocity
+                let shouldDismiss = value.translation.height > threshold ||
+                                  (value.translation.height > 40 && velocity > velocityThreshold)
+                
+                if shouldDismiss {
+                    // Animate card out and then close
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        cardDismissalOffset = 600
+                    }
+                    
+                    // Close the card after animation
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        handleCardClose()
+                        cardDismissalOffset = 0
+                    }
+                } else {
+                    // Snap back to original position
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        cardDismissalOffset = 0
+                    }
+                }
+            }
+    }
+    
     // MARK: - Layout Helpers
     
     /// Calculates card scale for subtle hover effect
@@ -413,6 +461,20 @@ struct CardDeckView: View {
     private func updateRefreshOffset(_ dragValue: CGSize) {
         if mainViewModel.selectedCardIndex == nil && dragValue.height > 0 {
             refreshOffset = min(dragValue.height * 0.8, 120) // Cap maximum offset
+        }
+    }
+    
+    /// Provides haptic feedback during card drag
+    private func updateCardDragFeedback(_ dragValue: CGSize) {
+        let distance = abs(dragValue.height)
+        
+        // Provide subtle haptic feedback at certain thresholds
+        if distance > 80 && distance < 85 {
+            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+            impactFeedback.impactOccurred()
+        } else if distance > 120 && distance < 125 {
+            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+            impactFeedback.impactOccurred()
         }
     }
     

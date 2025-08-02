@@ -18,6 +18,7 @@ struct ContentView: View {
     // MARK: - State Properties
     
     @State private var hasLaunched = false
+    @State private var showNavigationMenu = false
     
     // MARK: - Body
     
@@ -34,6 +35,52 @@ struct ContentView: View {
                     .transition(.opacity)
                     .zIndex(0)
             }
+            
+            // Global navigation button - only show when not in launch animation
+            if !mainViewModel.showLaunchAnimation {
+                VStack {
+                    HStack {
+                        Spacer()
+                        
+                        Button(action: {
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                showNavigationMenu.toggle()
+                            }
+                        }) {
+                            Image(systemName: showNavigationMenu ? "xmark" : "line.3.horizontal")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 44, height: 44)
+                                .background(
+                                    Circle()
+                                        .fill(.ultraThinMaterial)
+                                        .overlay(
+                                            Circle()
+                                                .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                                        )
+                                )
+                                .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
+                        }
+                        .rotationEffect(.degrees(showNavigationMenu ? 180 : 0))
+                        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: showNavigationMenu)
+                    }
+                    .padding(.top, 16)
+                    .padding(.trailing, 20)
+                    
+                    Spacer()
+                }
+                .zIndex(10)
+            }
+            
+            // Navigation menu overlay
+            if showNavigationMenu {
+                NavigationMenuView(
+                    isPresented: $showNavigationMenu,
+                    mainViewModel: mainViewModel
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                .zIndex(20)
+            }
         }
         .animation(.easeInOut(duration: 0.8), value: mainViewModel.showLaunchAnimation)
         .onAppear {
@@ -46,9 +93,6 @@ struct ContentView: View {
             mainViewModel.handleAppForegrounding()
         }
         .preferredColorScheme(.light) // Optimized for light mode gradient design
-        #if DEBUG
-        .monitorPerformance() // Performance monitoring in debug builds
-        #endif
     }
     
     // MARK: - Private Methods
