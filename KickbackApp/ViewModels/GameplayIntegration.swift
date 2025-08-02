@@ -232,6 +232,18 @@ public final class GameplayIntegration: ObservableObject {
         return player
     }
     
+    /// Gets all players in the game
+    /// - Returns: Array of players or empty array
+    public func getPlayers() -> [Player] {
+        guard isTurnBasedModeEnabled,
+              let gameplayViewModel = gameplayViewModel,
+              let setupData = gameplayViewModel.playerSetupData else { 
+            return []
+        }
+        
+        return [setupData.player1, setupData.player2]
+    }
+    
     /// Gets turn statistics
     /// - Returns: Turn statistics or nil
     public func getTurnStatistics() -> TurnStatistics? {
@@ -247,6 +259,17 @@ public final class GameplayIntegration: ObservableObject {
               let gameplayViewModel = gameplayViewModel else { return false }
         
         return gameplayViewModel.getCurrentPlayer()?.id == player.id
+    }
+    
+    /// Completes current turn and advances to next player
+    public func completeTurnAndAdvance() async {
+        guard isTurnBasedModeEnabled else { return }
+        
+        logger.info("Completing current turn and advancing")
+        
+        if let gameplayViewModel = gameplayViewModel {
+            await gameplayViewModel.completeTurnAndAdvance()
+        }
     }
     
     /// Gets display text for current game state

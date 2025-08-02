@@ -283,10 +283,6 @@ struct CardDeckView: View {
                     .transition(.scale.combined(with: .opacity))
                     .onAppear {
                         let currentPlayer = mainViewModel.gameplayIntegration.getCurrentPlayer()
-                        let turnBasedEnabled = mainViewModel.gameplayIntegration.isTurnBasedModeEnabled
-                        let gameplayViewModel = mainViewModel.gameplayIntegration.gameplayViewModel
-                        print("CardDeckView.turnIndicatorView: turnBasedEnabled=\(turnBasedEnabled)")
-                        print("CardDeckView.turnIndicatorView: gameplayViewModel=\(gameplayViewModel != nil ? "exists" : "nil")")
                         print("CardDeckView.turnIndicatorView: currentPlayer=\(currentPlayer?.displayName ?? "nil")")
                     }
             }
@@ -543,6 +539,27 @@ struct CardDeckView: View {
             withAnimation(matchedGeometryAnimation) {
                 mainViewModel.selectCard(at: index)
             }
+            
+            // Set up completion handler for the selected card
+            let cardViewModel = mainViewModel.cardViewModels[index]
+            cardViewModel.onCardCompleted = {
+                handleCardCompletion(at: index)
+            }
+            
+            // Set up player switching handler
+            cardViewModel.onPlayerNeedsToSwitch = {
+                handlePlayerSwitch(for: cardViewModel)
+            }
+            
+            // Set up question loaded handler to initialize answer collection after question is ready
+            cardViewModel.onQuestionLoaded = {
+                setupAnswerCollectionForCard(cardViewModel)
+            }
+            
+            // If the question is already loaded (not currently loading), set up immediately
+            if !cardViewModel.isLoading && !cardViewModel.question.isEmpty {
+                setupAnswerCollectionForCard(cardViewModel)
+            }
         }
     }
     
@@ -586,6 +603,111 @@ struct CardDeckView: View {
         
         // Trigger the mode selection in the view model
         mainViewModel.selectMode(mode)
+    }
+    
+    /// Handles card completion with sweep-up animation and new card generation
+    private func handleCardCompletion(at cardIndex: Int) {
+        guard cardIndex < mainViewModel.cardViewModels.count else { return }
+        
+        let completedCard = mainViewModel.cardViewModels[cardIndex]
+        
+        // Haptic feedback for completion
+        let impactFeedback = UIImpactFeedbackGenerator(style: .heavy)
+        impactFeedback.impactOccurred()
+        
+        // Start the sweep-up animation
+        withAnimation(.spring(response: 0.8, dampingFraction: 0.7)) {
+            completedCard.isCompletingCard = true
+        }
+        
+        // After animation delay, generate new card and show it
+        Task {
+            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+            
+            await MainActor.run {
+                // Reset the completed card and generate new question
+                completedCard.isCompletingCard = false
+                completedCard.reset()
+                
+                // Generate new question for the card
+                Task {
+                    await completedCard.loadQuestion(for: getRandomCategory())
+                }
+                
+                // Animate new card appearing from bottom
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.2)) {
+                    // Card will naturally appear as isCompletingCard becomes false
+                }
+                
+                // Deselect the card to return to deck view
+                mainViewModel.deselectAllCards()
+                
+                // Advance turn or handle game flow
+                handleTurnAdvancement()
+            }
+        }
+    }
+    
+    /// Gets a random category for new card generation
+    private func getRandomCategory() -> QuestionCategory {
+        let categories: [QuestionCategory] = [
+            .firstDate, .personalGrowth, .funAndPlayful, .deepCouple,
+            .vulnerabilitySharing, .futureVisions, .conflictResolution,
+            .loveLanguageDiscovery, .earlyDating, .valuesAlignment
+        ]
+        return categories.randomElement() ?? .personalGrowth
+    }
+    
+    /// Sets up answer collection for a card after question is loaded
+    private func setupAnswerCollectionForCard(_ cardViewModel: CardViewModel) {
+        // Initialize answer collection - the OTHER player records first
+        let players = mainViewModel.gameplayIntegration.getPlayers()
+        
+        if players.count >= 2 {
+            let currentPlayer = mainViewModel.gameplayIntegration.getCurrentPlayer()
+            // If Player 1 selected card, Player 2 answers first
+            // If Player 2 selected card, Player 1 answers first
+            let firstAnswerer = currentPlayer?.playerNumber == 1 ? players[1] : players[0]
+            cardViewModel.initializeAnswerCollection(currentPlayer: firstAnswerer)
+        }
+    }
+    
+    /// Handles player switching when first player finishes answering
+    private func handlePlayerSwitch(for cardViewModel: CardViewModel) {
+        let players = mainViewModel.gameplayIntegration.getPlayers()
+        guard players.count >= 2 else { return }
+        
+        // Find which player hasn't answered yet
+        if let answers = cardViewModel.cardAnswers {
+            print("Player switching: Player1 answered? \(answers.player1Answer != nil), Player2 answered? \(answers.player2Answer != nil)")
+            
+            if answers.player1Answer == nil {
+                print("Setting current player to Player 1: \(players[0].displayName)")
+                cardViewModel.setCurrentPlayer(players[0]) // Player 1
+            } else if answers.player2Answer == nil {
+                print("Setting current player to Player 2: \(players[1].displayName)")
+                cardViewModel.setCurrentPlayer(players[1]) // Player 2
+            } else {
+                print("Both players have answered - should trigger completion")
+            }
+        }
+        
+        // Haptic feedback for player switch
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.impactOccurred()
+    }
+    
+    /// Handles turn advancement after card completion
+    private func handleTurnAdvancement() {
+        // This will integrate with the gameplay system
+        // For now, just print debug info
+        if let currentPlayer = mainViewModel.gameplayIntegration.getCurrentPlayer() {
+            print("Turn completed by \(currentPlayer.displayName), advancing to next player")
+            
+            Task {
+                await mainViewModel.gameplayIntegration.completeTurnAndAdvance()
+            }
+        }
     }
 }
 

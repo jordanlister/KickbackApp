@@ -95,6 +95,13 @@ struct ConversationCard: View {
         }
         .frame(height: isExpanded ? expandedCardHeight : cardHeight)
         .clipShape(RoundedRectangle(cornerRadius: glassCornerRadius))
+        .scaleEffect(viewModel.isCompletingCard ? 0.8 : 1.0)
+        .opacity(viewModel.isCompletingCard ? 0.0 : 1.0)
+        .offset(y: viewModel.isCompletingCard ? -200 : 0)
+        .animation(.spring(response: 0.8, dampingFraction: 0.7), value: viewModel.isCompletingCard)
+        // New card pop-up animation (starts from bottom)
+        .offset(y: viewModel.isLoading && !viewModel.isCompletingCard ? 100 : 0)
+        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: viewModel.isLoading)
     }
     
     // MARK: - Subviews
@@ -118,6 +125,21 @@ struct ConversationCard: View {
                 .interactive()
             
             Spacer()
+            
+            // Show current player indicator when expanded
+            if isExpanded && !viewModel.isLoading, let currentPlayer = viewModel.currentPlayer {
+                Text("\(currentPlayer.displayName)'s turn")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .glassEffect(
+                        style: .regular,
+                        tint: categoryColor.opacity(0.05)
+                    )
+                    .interactive()
+            }
             
             if viewModel.isLoading {
                 ProgressView()
@@ -243,7 +265,7 @@ struct ConversationCard: View {
                 // Glass voice input button
                 Button(action: {
                     Task {
-                        await viewModel.toggleVoiceInput()
+                        await handleVoiceInput()
                     }
                 }) {
                     HStack(spacing: isExpanded ? 10 : 6) {
@@ -271,7 +293,7 @@ struct ConversationCard: View {
                     )
                     .interactive()
                 }
-                .disabled(!viewModel.voicePermissionsGranted && !viewModel.isVoiceInputMode)
+                // Remove the disabled state since permissions are handled in onboarding
                 
                 Spacer()
                 
@@ -302,14 +324,39 @@ struct ConversationCard: View {
             // Transcription preview with glass effects
             if !viewModel.voiceAnswer.isEmpty {
                 glassTranscriptionPreview
+                
+                // Confirm answer button
+                Button(action: {
+                    Task {
+                        await handleAnswerConfirmation()
+                    }
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.title3)
+                        Text("Confirm Answer")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(categoryColor)
+                    )
+                    .glassEffect(
+                        style: .prominent,
+                        tint: categoryColor.opacity(0.2)
+                    )
+                    .interactive()
+                }
+                .padding(.top, 8)
             } else if viewModel.isVoiceInputMode && !viewModel.audioTranscriber.partialTranscription.isEmpty {
                 glassLiveTranscriptionPreview
             }
             
-            // Permission warning with glass effects
-            if !viewModel.voicePermissionsGranted {
-                glassPermissionPrompt
-            }
+            // No longer show permission prompt since permissions are granted in onboarding
             
             // Error display with glass effects
             if let error = viewModel.audioTranscriber.currentError {
@@ -542,6 +589,33 @@ struct ConversationCard: View {
         }
         
         return traits
+    }
+    
+    // MARK: - Private Methods
+    
+    /// Handles voice input interaction and answer recording
+    private func handleVoiceInput() async {
+        if viewModel.isVoiceInputMode {
+            // Stop recording
+            await viewModel.stopVoiceRecording()
+        } else {
+            // Start recording
+            await viewModel.startVoiceRecording()
+        }
+    }
+    
+    /// Handles answer confirmation and saves the response
+    private func handleAnswerConfirmation() async {
+        guard !viewModel.voiceAnswer.isEmpty else { return }
+        
+        let success = await viewModel.recordCurrentPlayerAnswer()
+        if success {
+            print("Answer confirmed and recorded for player \(viewModel.currentPlayer?.displayName ?? "unknown")")
+            
+            // Haptic feedback for confirmation
+            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+            impactFeedback.impactOccurred()
+        }
     }
 }
 

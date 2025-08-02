@@ -62,6 +62,20 @@ public final class CardViewModel: ObservableObject {
     /// Whether voice permissions have been requested and granted
     @Published var voicePermissionsGranted: Bool = false
     
+    // MARK: - Answer Management Properties
+    
+    /// Collection of answers for this card from both players
+    @Published var cardAnswers: CardAnswers?
+    
+    /// Current player answering (from gameplay integration)
+    @Published var currentPlayer: Player?
+    
+    /// Whether this card has been completed (both players answered)
+    @Published var isCardComplete: Bool = false
+    
+    /// Animation state for card completion
+    @Published var isCompletingCard: Bool = false
+    
     // MARK: - Initialization
     
     /// Initializes CardViewModel with dependency injection for testing
@@ -95,6 +109,9 @@ public final class CardViewModel: ObservableObject {
             // Update question and start reveal animation
             question = newQuestion
             await startQuestionRevealAnimation()
+            
+            // Notify that question is ready
+            onQuestionLoaded?()
             
         } catch {
             errorMessage = error.localizedDescription
@@ -141,11 +158,8 @@ public final class CardViewModel: ObservableObject {
     func startVoiceRecording() async {
         guard !question.isEmpty else { return }
         
-        // Request permissions if not already granted
-        if !voicePermissionsGranted {
-            voicePermissionsGranted = await audioTranscriber.requestPermissions()
-            guard voicePermissionsGranted else { return }
-        }
+        // Since permissions are granted in onboarding, assume they're available
+        voicePermissionsGranted = true
         
         do {
             isVoiceInputMode = true
@@ -186,6 +200,140 @@ public final class CardViewModel: ObservableObject {
         withAnimation(.easeInOut(duration: 0.2)) {
             voiceAnswer = ""
         }
+    }
+    
+    // MARK: - Answer Management Methods
+    
+    /// Initializes answer collection for this card
+    /// - Parameters:
+    ///   - currentPlayer: The player who will answer first
+    ///   - gameSessionID: Optional game session identifier
+    func initializeAnswerCollection(currentPlayer: Player, gameSessionID: UUID? = nil) {
+        self.currentPlayer = currentPlayer
+        
+        // Create answer collection if not exists
+        if cardAnswers == nil && !question.isEmpty {
+            cardAnswers = CardAnswers(
+                question: question,
+                category: category,
+                gameSessionID: gameSessionID
+            )
+        }
+    }
+    
+    /// Records the current player's answer from voice input
+    /// - Returns: True if answer was recorded successfully
+    @discardableResult
+    func recordCurrentPlayerAnswer() async -> Bool {
+        guard let player = currentPlayer,
+              let answers = cardAnswers,
+              !voiceAnswer.isEmpty else {
+            return false
+        }
+        
+        // Create player answer from voice input
+        let playerAnswer = PlayerAnswer(
+            playerID: player.id,
+            playerNumber: player.playerNumber,
+            answerText: voiceAnswer,
+            recordingDuration: audioTranscriber.recordingDuration,
+            audioQuality: audioTranscriber.audioLevel
+        )
+        
+        print("Recording answer for player \(player.playerNumber) (\(player.displayName)): \(voiceAnswer)")
+        
+        // Add answer to collection
+        var updatedAnswers = answers
+        updatedAnswers.setAnswer(playerAnswer)
+        cardAnswers = updatedAnswers
+        
+        print("After recording: Player1 answered? \(updatedAnswers.player1Answer != nil), Player2 answered? \(updatedAnswers.player2Answer != nil)")
+        print("Complete? \(updatedAnswers.isComplete)")
+        
+        // Clear current voice answer
+        voiceAnswer = ""
+        
+        // Check if we need to switch to the other player
+        if !updatedAnswers.isComplete {
+            switchToOtherPlayer()
+        } else {
+            // Both players have answered, trigger completion
+            checkCardCompletion()
+        }
+        
+        return true
+    }
+    
+    /// Switches to the other player for their turn to answer
+    private func switchToOtherPlayer() {
+        // Notify parent view that player needs to switch
+        onPlayerNeedsToSwitch?()
+        print("Ready for next player to answer")
+    }
+    
+    /// Sets the current player (called by parent view)
+    func setCurrentPlayer(_ player: Player) {
+        currentPlayer = player
+        print("Current answering player: \(player.displayName)")
+    }
+    
+    /// Checks if both players have answered and triggers completion flow
+    private func checkCardCompletion() {
+        guard let answers = cardAnswers else { return }
+        
+        isCardComplete = answers.isComplete
+        
+        if isCardComplete {
+            triggerCardCompletion()
+        }
+    }
+    
+    /// Triggers the card completion animation and cleanup
+    private func triggerCardCompletion() {
+        withAnimation(.spring(response: 0.8, dampingFraction: 0.7)) {
+            isCompletingCard = true
+        }
+        
+        // Notify completion after animation
+        Task {
+            try? await Task.sleep(nanoseconds: 800_000_000) // 0.8 seconds
+            await MainActor.run {
+                onCardCompleted?()
+            }
+        }
+    }
+    
+    /// Callback for when card is completed (set by parent view model)
+    var onCardCompleted: (() -> Void)?
+    
+    /// Callback for when player needs to switch (set by parent view model)
+    var onPlayerNeedsToSwitch: (() -> Void)?
+    
+    /// Callback for when question is loaded (set by parent view model)
+    var onQuestionLoaded: (() -> Void)?
+    
+    /// Gets answer for a specific player
+    /// - Parameter playerNumber: Player number (1 or 2)
+    /// - Returns: Player's answer or nil
+    func getPlayerAnswer(for playerNumber: Int) -> PlayerAnswer? {
+        return cardAnswers?.getAnswer(for: playerNumber)
+    }
+    
+    /// Checks if a specific player has answered
+    /// - Parameter playerNumber: Player number (1 or 2)
+    /// - Returns: True if player has answered
+    func hasPlayerAnswered(_ playerNumber: Int) -> Bool {
+        return getPlayerAnswer(for: playerNumber) != nil
+    }
+    
+    /// Gets the waiting player (who hasn't answered yet)
+    /// - Returns: Player number of waiting player, or nil if both have answered
+    func getWaitingPlayerNumber() -> Int? {
+        guard let answers = cardAnswers else { return nil }
+        
+        if answers.player1Answer == nil { return 1 }
+        if answers.player2Answer == nil { return 2 }
+        return nil // Both have answered
     }
     
     // MARK: - Private Methods

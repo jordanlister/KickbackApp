@@ -30,6 +30,9 @@ public final class AudioTranscriber: NSObject, ObservableObject {
     /// Audio level for visual feedback (0.0 to 1.0)
     @Published var audioLevel: Float = 0.0
     
+    /// Duration of the current/last recording in seconds
+    @Published var recordingDuration: TimeInterval = 0.0
+    
     /// Current error state, if any
     @Published var currentError: AudioTranscriberError?
     
@@ -56,6 +59,9 @@ public final class AudioTranscriber: NSObject, ObservableObject {
     
     /// Timer for audio level monitoring
     private var audioLevelTimer: Timer?
+    
+    /// Recording start time for duration calculation
+    private var recordingStartTime: Date?
     
     /// Temporary audio file URL for recording
     private var recordingURL: URL {
@@ -93,6 +99,8 @@ public final class AudioTranscriber: NSObject, ObservableObject {
         transcriptionText = ""
         partialTranscription = ""
         audioLevel = 0.0
+        recordingDuration = 0.0
+        recordingStartTime = Date()
         
         // Setup audio session
         try await setupAudioSession()
@@ -118,6 +126,11 @@ public final class AudioTranscriber: NSObject, ObservableObject {
     /// - Returns: Final transcribed text
     func stopRecording() async -> String {
         guard isRecording else { return transcriptionText }
+        
+        // Calculate final recording duration
+        if let startTime = recordingStartTime {
+            recordingDuration = Date().timeIntervalSince(startTime)
+        }
         
         // Stop audio components
         audioEngine?.stop()
@@ -368,6 +381,11 @@ public final class AudioTranscriber: NSObject, ObservableObject {
         // Convert decibel to linear scale (0.0 to 1.0)
         let normalizedPower = max(0.0, (power + 80.0) / 80.0)
         audioLevel = normalizedPower
+        
+        // Update recording duration
+        if let startTime = recordingStartTime {
+            recordingDuration = Date().timeIntervalSince(startTime)
+        }
     }
 }
 
