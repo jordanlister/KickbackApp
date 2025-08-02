@@ -277,6 +277,18 @@ struct CardDeckView: View {
                 // Empty state with koala mascot
                 emptyStateView
                     .transition(.scale.combined(with: .opacity))
+            } else {
+                // Turn indicator when no card is selected but cards are available
+                turnIndicatorView
+                    .transition(.scale.combined(with: .opacity))
+                    .onAppear {
+                        let currentPlayer = mainViewModel.gameplayIntegration.getCurrentPlayer()
+                        let turnBasedEnabled = mainViewModel.gameplayIntegration.isTurnBasedModeEnabled
+                        let gameplayViewModel = mainViewModel.gameplayIntegration.gameplayViewModel
+                        print("CardDeckView.turnIndicatorView: turnBasedEnabled=\(turnBasedEnabled)")
+                        print("CardDeckView.turnIndicatorView: gameplayViewModel=\(gameplayViewModel != nil ? "exists" : "nil")")
+                        print("CardDeckView.turnIndicatorView: currentPlayer=\(currentPlayer?.displayName ?? "nil")")
+                    }
             }
             
             Spacer()
@@ -338,6 +350,37 @@ struct CardDeckView: View {
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
+    }
+    
+    /// Turn indicator view showing whose turn it is
+    @ViewBuilder
+    private var turnIndicatorView: some View {
+        let currentPlayer = mainViewModel.gameplayIntegration.getCurrentPlayer()
+        let turnBasedEnabled = mainViewModel.gameplayIntegration.isTurnBasedModeEnabled
+        let gameplayViewModel = mainViewModel.gameplayIntegration.gameplayViewModel
+        
+        if let currentPlayer = currentPlayer {
+            TurnIndicatorView(
+                currentPlayerName: currentPlayer.displayName,
+                playerNumber: currentPlayer.playerNumber,
+                isVisible: .constant(true)
+            )
+            .padding(.horizontal, 20)
+        } else {
+            // Fallback text if no current player
+            VStack(spacing: 12) {
+                Text("Select a card to start")
+                    .font(.title2)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                
+                Text("Tap any card below to begin your conversation")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.horizontal, 40)
+        }
     }
     
     /// Empty state view with glass morphism and koala mascot

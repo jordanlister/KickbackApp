@@ -24,9 +24,9 @@ struct ConversationCard: View {
     
     /// Card dimensions and layout constants
     private let cardHeight: CGFloat = 200
-    private let expandedCardHeight: CGFloat = 320
-    private let cardPadding: CGFloat = 20
-    private let cornerRadius: CGFloat = 24
+    private let expandedCardHeight: CGFloat = 680
+    private let cardPadding: CGFloat = 32
+    private let cornerRadius: CGFloat = 28
     
     /// Glass effect constants
     private let glassCornerRadius: CGFloat = 24
@@ -77,7 +77,7 @@ struct ConversationCard: View {
             cardBackground
             
             // Glass card content container
-            VStack(spacing: 16) {
+            VStack(spacing: isExpanded ? 32 : 16) {
                 // Category indicator with glass effect
                 categoryHeader
                 
@@ -104,13 +104,13 @@ struct ConversationCard: View {
     private var categoryHeader: some View {
         HStack {
             Text(viewModel.category.displayName)
-                .font(.caption)
+                .font(isExpanded ? .subheadline : .caption)
                 .fontWeight(.medium)
                 .foregroundColor(categoryColor)
                 .textCase(.uppercase)
                 .tracking(0.5)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
+                .padding(.horizontal, isExpanded ? 16 : 12)
+                .padding(.vertical, isExpanded ? 10 : 6)
                 .glassEffect(
                     style: .regular,
                     tint: categoryColor.opacity(0.1)
@@ -121,7 +121,7 @@ struct ConversationCard: View {
             
             if viewModel.isLoading {
                 ProgressView()
-                    .scaleEffect(0.7)
+                    .scaleEffect(isExpanded ? 1.0 : 0.7)
                     .progressViewStyle(CircularProgressViewStyle(tint: categoryColor))
                     .glassEffect(
                         style: .regular,
@@ -212,11 +212,14 @@ struct ConversationCard: View {
     @ViewBuilder
     private var questionText: some View {
         Text(viewModel.displayedQuestion)
-            .font(.body)
-            .fontWeight(.medium)
+            .font(isExpanded ? .title2 : .body)
+            .fontWeight(isExpanded ? .medium : .medium)
             .foregroundColor(.primary)
             .multilineTextAlignment(.leading)
             .lineLimit(isExpanded ? nil : 3)
+            .lineSpacing(isExpanded ? 8 : 4)
+            .padding(.horizontal, isExpanded ? 16 : 0)
+            .padding(.vertical, isExpanded ? 20 : 0)
             .animation(.none, value: viewModel.displayedQuestion) // Disable automatic animation
             .opacity(viewModel.displayedQuestion.isEmpty ? 0.0 : 1.0)
             .animation(.easeIn(duration: 0.2), value: viewModel.displayedQuestion.isEmpty)
@@ -225,7 +228,7 @@ struct ConversationCard: View {
     /// Glass voice input section for answering questions
     @ViewBuilder
     private var glassVoiceInputSection: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: isExpanded ? 16 : 12) {
             // Glass divider
             Rectangle()
                 .fill(.ultraThinMaterial)
@@ -243,7 +246,7 @@ struct ConversationCard: View {
                         await viewModel.toggleVoiceInput()
                     }
                 }) {
-                    HStack(spacing: 6) {
+                    HStack(spacing: isExpanded ? 10 : 6) {
                         if viewModel.isVoiceInputMode {
                             VoiceRecordingIndicator.compact(
                                 audioLevel: viewModel.audioTranscriber.audioLevel,
@@ -251,17 +254,17 @@ struct ConversationCard: View {
                             )
                         } else {
                             Image(systemName: "mic.circle.fill")
-                                .font(.title2)
+                                .font(isExpanded ? .title : .title2)
                                 .foregroundColor(categoryColor)
                         }
                         
                         Text(viewModel.isVoiceInputMode ? "Recording..." : "Voice Answer")
-                            .font(.subheadline)
+                            .font(isExpanded ? .body : .subheadline)
                             .fontWeight(.medium)
                     }
                     .foregroundColor(viewModel.isVoiceInputMode ? .red : categoryColor)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, isExpanded ? 16 : 12)
+                    .padding(.vertical, isExpanded ? 12 : 8)
                     .glassEffect(
                         style: .regular,
                         tint: (viewModel.isVoiceInputMode ? Color.red : categoryColor).opacity(0.1)

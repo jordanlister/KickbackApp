@@ -259,8 +259,8 @@ public final class MainContentViewModel: ObservableObject {
     
     /// Handles completion of player setup and starts the game
     func completePlayerSetup() {
-        // Enable turn-based mode
-        gameplayIntegration.enableTurnBasedMode()
+        // Enable turn-based mode with player data
+        gameplayIntegration.enableTurnBasedMode(with: playerManager)
         
         // Hide player setup and show cards with game start
         withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
