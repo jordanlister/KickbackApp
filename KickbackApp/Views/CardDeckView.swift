@@ -7,50 +7,59 @@
 
 import SwiftUI
 
-/// Main card deck interface managing 3-card layout, gestures, and interactions
-/// Optimized for 60fps performance with smooth animations and responsive gestures
+/// Modern card deck interface with horizontal 3-card layout in bottom third
+/// Features smooth flip animations with matched geometry and brand-consistent design
 struct CardDeckView: View {
     
     // MARK: - Properties
     
     @ObservedObject var mainViewModel: MainContentViewModel
+    @Namespace private var cardNamespace
     
     /// Gesture state for swipe-to-refresh
     @GestureState private var dragOffset: CGSize = .zero
     @State private var refreshOffset: CGFloat = 0.0
     @State private var isRefreshing: Bool = false
     
-    /// Layout constants optimized for different screen sizes
-    private let cardSpacing: CGFloat = 16
+    /// Layout constants for modern design
+    private let cardWidth: CGFloat = 100
+    private let cardHeight: CGFloat = 140
+    private let expandedCardWidth: CGFloat = 320
+    private let expandedCardHeight: CGFloat = 400
+    private let cardSpacing: CGFloat = 20
     private let deckPadding: CGFloat = 20
     private let refreshThreshold: CGFloat = 80
     
     /// Animation constants for smooth 60fps performance
-    private let cardAnimationDuration: Double = 0.5
+    private let cardFlipDuration: Double = 0.8
+    private let cardLayoutDuration: Double = 0.6
     private let refreshAnimationDuration: Double = 0.3
     
     // MARK: - Body
     
     var body: some View {
         GeometryReader { geometry in
-            VStack(spacing: 0) {
-                // Refresh indicator area
-                refreshIndicator
+            ZStack {
+                // Brand gradient background
+                brandBackgroundGradient
+                    .ignoresSafeArea()
                 
-                // Main card deck area
-                cardDeckContent(geometry: geometry)
-                
-                Spacer(minLength: 0)
+                VStack(spacing: 0) {
+                    // Top 2/3 area for expanded card or empty state
+                    topContentArea(geometry: geometry)
+                    
+                    // Bottom 1/3 area for horizontal card deck
+                    bottomCardDeck(geometry: geometry)
+                }
             }
         }
-        .background(deckBackgroundGradient)
         .gesture(refreshGesture)
         .onChange(of: dragOffset) { _, newValue in
             updateRefreshOffset(newValue)
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Card deck")
-        .accessibilityHint("Contains three conversation cards. Pull down to refresh with new questions.")
+        .accessibilityLabel("Kickback card deck")
+        .accessibilityHint("Three conversation cards in bottom section. Tap a card to expand it.")
         .accessibilityAction(named: "Refresh cards") {
             Task {
                 await mainViewModel.refreshAllCards()
@@ -89,91 +98,152 @@ struct CardDeckView: View {
         .animation(.easeInOut(duration: 0.2), value: refreshOffset)
     }
     
-    /// Main card deck layout with responsive positioning
+    /// Top 2/3 area for expanded card or empty state
     @ViewBuilder
-    private func cardDeckContent(geometry: GeometryProxy) -> some View {
-        let availableHeight = geometry.size.height - refreshOffset
-        let cardAreaHeight = availableHeight * 0.7 // Bottom 70% for cards
-        let isCompactHeight = geometry.size.height < 700
+    private func topContentArea(geometry: GeometryProxy) -> some View {
+        let topHeight = geometry.size.height * 0.67
         
-        VStack(spacing: cardSpacing) {
+        VStack {
+            // Refresh indicator
+            if refreshOffset > 10 {
+                refreshIndicator
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+            
             Spacer()
             
-            // Card stack with staggered animations
-            LazyVStack(spacing: cardSpacing) {
-                ForEach(Array(mainViewModel.cardViewModels.enumerated()), id: \.element.id) { index, cardViewModel in
-                    ConversationCard(viewModel: cardViewModel, cardIndex: index)
-                        .onTapGesture {
-                            handleCardTap(at: index)
-                        }
-                        .accessibilityAddTraits(.allowsDirectInteraction)
-                        .accessibilityIdentifier("conversation_card_\(index)")
-                        .scaleEffect(cardScale(at: index))
-                        .offset(y: cardOffset(at: index, compactHeight: isCompactHeight))
-                        .zIndex(cardZIndex(at: index))
-                        .animation(
-                            .spring(response: cardAnimationDuration, dampingFraction: 0.8, blendDuration: 0)
-                                .delay(mainViewModel.cardAnimationDelays[safe: index] ?? 0),
-                            value: mainViewModel.selectedCardIndex
-                        )
-                        .transition(.asymmetric(
-                            insertion: .scale.combined(with: .opacity),
-                            removal: .scale.combined(with: .opacity)
-                        ))
-                }
+            // Expanded card area or empty state
+            if let selectedIndex = mainViewModel.selectedCardIndex {
+                // Show expanded card
+                ConversationCard(
+                    viewModel: mainViewModel.cardViewModels[selectedIndex],
+                    cardIndex: selectedIndex,
+                    isExpanded: true
+                )
+                .matchedGeometryEffect(id: "card_\(selectedIndex)", in: cardNamespace)
+                .frame(width: expandedCardWidth, height: expandedCardHeight)
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .move(edge: .bottom)),
+                    removal: .opacity.combined(with: .move(edge: .bottom))
+                ))
+            } else if mainViewModel.cardViewModels.isEmpty {
+                // Empty state with koala mascot
+                emptyStateView
+                    .transition(.scale.combined(with: .opacity))
             }
-            .frame(height: cardAreaHeight)
             
-            // Bottom action area (future expansion for buttons/controls)
-            bottomActionArea
+            Spacer()
+            
+            // Close button when card is expanded
+            if mainViewModel.selectedCardIndex != nil {
+                closeButton
+                    .transition(.scale.combined(with: .opacity))
+            }
         }
-        .padding(.horizontal, deckPadding)
-        .offset(y: refreshOffset * 0.3) // Subtle parallax effect during refresh
+        .frame(height: topHeight)
+        .animation(.spring(response: cardLayoutDuration, dampingFraction: 0.8), value: mainViewModel.selectedCardIndex)
     }
     
-    /// Bottom area for future action buttons or controls
+    /// Bottom 1/3 horizontal card deck
     @ViewBuilder
-    private var bottomActionArea: some View {
-        if let selectedIndex = mainViewModel.selectedCardIndex {
-            Button(action: {
-                mainViewModel.deselectAllCards()
-            }) {
-                HStack {
-                    Image(systemName: "chevron.down")
-                        .font(.caption)
-                    Text("Close")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+    private func bottomCardDeck(geometry: GeometryProxy) -> some View {
+        let bottomHeight = geometry.size.height * 0.33
+        
+        HStack(spacing: cardSpacing) {
+            ForEach(Array(mainViewModel.cardViewModels.enumerated()), id: \.element.id) { index, cardViewModel in
+                if mainViewModel.selectedCardIndex != index {
+                    KickbackCardView(
+                        viewModel: cardViewModel,
+                        cardIndex: index,
+                        isBack: true
+                    )
+                    .matchedGeometryEffect(id: "card_\(index)", in: cardNamespace)
+                    .frame(width: cardWidth, height: cardHeight)
+                    .onTapGesture {
+                        handleCardTap(at: index)
+                    }
+                    .scaleEffect(cardScale(at: index))
+                    .opacity(cardOpacity(at: index))
+                    .transition(.asymmetric(
+                        insertion: .scale.combined(with: .opacity),
+                        removal: .scale.combined(with: .opacity)
+                    ))
+                } else {
+                    // Invisible placeholder to maintain layout
+                    Rectangle()
+                        .fill(Color.clear)
+                        .frame(width: cardWidth, height: cardHeight)
                 }
-                .foregroundColor(.white.opacity(0.9))
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(
-                    Capsule()
-                        .fill(.ultraThinMaterial)
-                )
             }
-            .transition(.scale.combined(with: .opacity))
-            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedIndex)
         }
+        .frame(height: bottomHeight)
+        .padding(.horizontal, deckPadding)
+        .animation(.spring(response: cardLayoutDuration, dampingFraction: 0.8), value: mainViewModel.selectedCardIndex)
     }
+    
     
     // MARK: - Computed Properties
     
-    /// Dynamic background gradient
-    private var deckBackgroundGradient: LinearGradient {
+    /// Brand-consistent background gradient using brand colors
+    private var brandBackgroundGradient: LinearGradient {
         LinearGradient(
             gradient: Gradient(colors: [
-                Color(red: 0.9, green: 0.6, blue: 0.7), // Warm pink
-                Color(red: 0.8, green: 0.5, blue: 0.9), // Soft purple
-                Color(red: 0.6, green: 0.7, blue: 0.9)  // Light blue
+                Color("BrandPurple"),
+                Color("BrandPurpleLight")
             ]),
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
     }
     
-    /// Pull-to-refresh gesture
+    /// Empty state view with koala mascot
+    @ViewBuilder
+    private var emptyStateView: some View {
+        VStack(spacing: 20) {
+            Image("KoalaMascot")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 120, height: 120)
+                .foregroundColor(.white.opacity(0.8))
+            
+            Text("No cards available")
+                .font(.title2)
+                .fontWeight(.medium)
+                .foregroundColor(.white.opacity(0.9))
+            
+            Text("Pull down to refresh and get new conversation starters")
+                .font(.subheadline)
+                .foregroundColor(.white.opacity(0.7))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+        }
+    }
+    
+    /// Close button for expanded card
+    @ViewBuilder
+    private var closeButton: some View {
+        Button(action: {
+            mainViewModel.deselectAllCards()
+        }) {
+            HStack(spacing: 8) {
+                Image(systemName: "chevron.down")
+                    .font(.caption)
+                Text("Close")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+            }
+            .foregroundColor(.white.opacity(0.9))
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(
+                Capsule()
+                    .fill(.ultraThinMaterial)
+            )
+        }
+        .padding(.bottom, 20)
+    }
+    
+    /// Pull-to-refresh gesture with smooth swipe detection
     private var refreshGesture: some Gesture {
         DragGesture()
             .updating($dragOffset) { value, state, _ in
@@ -183,12 +253,17 @@ struct CardDeckView: View {
                 }
             }
             .onEnded { value in
-                if value.translation.height > refreshThreshold && !isRefreshing {
+                let velocity = value.predictedEndTranslation.height
+                let shouldRefresh = value.translation.height > refreshThreshold || 
+                                  (value.translation.height > 40 && velocity > 200)
+                
+                if shouldRefresh && !isRefreshing {
                     triggerRefresh()
                 }
                 
-                // Reset refresh offset
-                withAnimation(.spring(response: refreshAnimationDuration, dampingFraction: 0.8)) {
+                // Reset refresh offset with velocity-based animation
+                let animationSpeed = min(0.6, max(0.3, abs(velocity) / 1000))
+                withAnimation(.spring(response: animationSpeed, dampingFraction: 0.8)) {
                     refreshOffset = 0.0
                 }
             }
@@ -196,38 +271,17 @@ struct CardDeckView: View {
     
     // MARK: - Layout Helpers
     
-    /// Calculates card scale based on selection state
+    /// Calculates card scale for subtle hover effect
     private func cardScale(at index: Int) -> CGFloat {
+        return mainViewModel.selectedCardIndex == index ? 1.05 : 1.0
+    }
+    
+    /// Calculates card opacity for selection feedback
+    private func cardOpacity(at index: Int) -> Double {
         if let selectedIndex = mainViewModel.selectedCardIndex {
-            return selectedIndex == index ? 1.1 : 0.9
+            return selectedIndex == index ? 0.3 : 1.0
         }
         return 1.0
-    }
-    
-    /// Calculates card vertical offset for stacking effect
-    private func cardOffset(at index: Int, compactHeight: Bool) -> CGFloat {
-        guard let selectedIndex = mainViewModel.selectedCardIndex else {
-            // Default stacking offsets
-            let baseOffset: CGFloat = compactHeight ? 10 : 15
-            return CGFloat(index) * baseOffset
-        }
-        
-        // Expanded state positioning
-        if selectedIndex == index {
-            return -50 // Move selected card up
-        } else if index < selectedIndex {
-            return -100 // Move cards above selected card further up
-        } else {
-            return 100 // Move cards below selected card down
-        }
-    }
-    
-    /// Calculates Z-index for proper card layering
-    private func cardZIndex(at index: Int) -> Double {
-        if let selectedIndex = mainViewModel.selectedCardIndex {
-            return selectedIndex == index ? 10 : Double(-index)
-        }
-        return Double(mainViewModel.cardViewModels.count - index)
     }
     
     // MARK: - Gesture Handlers
@@ -239,17 +293,21 @@ struct CardDeckView: View {
         }
     }
     
-    /// Handles card tap with haptic feedback
+    /// Handles card tap with haptic feedback and flip animation
     private func handleCardTap(at index: Int) {
         // Prevent interaction during refresh
         guard !isRefreshing else { return }
         
         if mainViewModel.selectedCardIndex == index {
-            // Tapping selected card deselects it
-            mainViewModel.deselectAllCards()
+            // Tapping selected card deselects it with flip down animation
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                mainViewModel.deselectAllCards()
+            }
         } else {
-            // Select the tapped card
-            mainViewModel.selectCard(at: index)
+            // Select the tapped card with horizontal flip up animation
+            withAnimation(.spring(response: 0.8, dampingFraction: 0.7)) {
+                mainViewModel.selectCard(at: index)
+            }
         }
     }
     
@@ -301,17 +359,25 @@ private extension Array {
 
 // MARK: - Preview Support
 
-#Preview("Card Deck - Default State") {
+#Preview("Modern Kickback Deck - Default") {
     CardDeckView(mainViewModel: MainContentViewModel.mock())
         .preferredColorScheme(.light)
 }
 
-#Preview("Card Deck - Selected Card") {
+#Preview("Modern Kickback Deck - Expanded Card") {
     CardDeckView(mainViewModel: MainContentViewModel.mock(selectedCardIndex: 1))
         .preferredColorScheme(.light)
 }
 
-#Preview("Card Deck - Dark Mode") {
+#Preview("Modern Kickback Deck - Empty State") {
+    let emptyViewModel = MainContentViewModel.mock()
+    emptyViewModel.cardViewModels = []
+    return CardDeckView(mainViewModel: emptyViewModel)
+        .preferredColorScheme(.light)
+}
+
+#Preview("Complete Modern Interface") {
     CardDeckView(mainViewModel: MainContentViewModel.mock())
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(.light)
+        .statusBarHidden()
 }

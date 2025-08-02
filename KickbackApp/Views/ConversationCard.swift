@@ -15,6 +15,7 @@ struct ConversationCard: View {
     
     @ObservedObject var viewModel: CardViewModel
     let cardIndex: Int
+    let isExpanded: Bool
     
     /// Card dimensions and layout constants
     private let cardHeight: CGFloat = 200
@@ -68,8 +69,8 @@ struct ConversationCard: View {
                 // Question content area
                 questionContent
                 
-                // Voice input section when card is flipped
-                if viewModel.isFlipped && !viewModel.isLoading && viewModel.errorMessage == nil {
+                // Voice input section when card is expanded
+                if isExpanded && !viewModel.isLoading && viewModel.errorMessage == nil {
                     voiceInputSection
                 }
                 
@@ -77,12 +78,8 @@ struct ConversationCard: View {
             }
             .padding(cardPadding)
         }
-        .frame(height: viewModel.isFlipped ? expandedCardHeight : cardHeight)
+        .frame(height: isExpanded ? expandedCardHeight : cardHeight)
         .scaleEffect(viewModel.isFlipped ? 1.05 : 1.0)
-        .rotation3DEffect(
-            .degrees(viewModel.isFlipped ? 0 : 0),
-            axis: (x: 1, y: 0, z: 0)
-        )
         .animation(
             .spring(response: flipDuration, dampingFraction: 0.8, blendDuration: 0),
             value: viewModel.isFlipped
@@ -110,8 +107,8 @@ struct ConversationCard: View {
                     .progressViewStyle(CircularProgressViewStyle(tint: categoryColor))
             }
         }
-        .opacity(viewModel.isFlipped ? 1.0 : 0.8)
-        .animation(.easeInOut(duration: 0.3), value: viewModel.isFlipped)
+        .opacity(isExpanded ? 1.0 : 0.8)
+        .animation(.easeInOut(duration: 0.3), value: isExpanded)
     }
     
     /// Main question content with text reveal animation
@@ -174,7 +171,7 @@ struct ConversationCard: View {
             .fontWeight(.medium)
             .foregroundColor(.primary)
             .multilineTextAlignment(.leading)
-            .lineLimit(viewModel.isFlipped ? nil : 3)
+            .lineLimit(isExpanded ? nil : 3)
             .animation(.none, value: viewModel.displayedQuestion) // Disable automatic animation
             .opacity(viewModel.displayedQuestion.isEmpty ? 0.0 : 1.0)
             .animation(.easeIn(duration: 0.2), value: viewModel.displayedQuestion.isEmpty)
@@ -413,7 +410,7 @@ struct ConversationCard: View {
         } else if viewModel.errorMessage != nil {
             return "Error loading \(viewModel.category.displayName) question. Tap to retry."
         } else {
-            let cardState = viewModel.isFlipped ? "expanded" : "collapsed"
+            let cardState = isExpanded ? "expanded" : "collapsed"
             return "\(viewModel.category.displayName) conversation card, \(cardState)"
         }
     }
@@ -424,7 +421,7 @@ struct ConversationCard: View {
             return "Please wait while the question loads"
         } else if viewModel.errorMessage != nil {
             return "Double tap to retry loading the question"
-        } else if viewModel.isFlipped {
+        } else if isExpanded {
             return "Double tap to collapse this card and return to deck view"
         } else {
             return "Double tap to expand this card and read the full question"
@@ -452,7 +449,7 @@ struct ConversationCard: View {
             traits.insert(.updatesFrequently)
         }
         
-        if viewModel.isFlipped {
+        if isExpanded {
             traits.insert(.isSelected)
         }
         
@@ -469,7 +466,8 @@ struct ConversationCard: View {
             category: .funAndPlayful,
             isFlipped: false
         ),
-        cardIndex: 0
+        cardIndex: 0,
+        isExpanded: false
     )
     .padding()
     .background(Color.gray.opacity(0.1))
@@ -482,7 +480,8 @@ struct ConversationCard: View {
             category: .personalGrowth,
             isFlipped: true
         ),
-        cardIndex: 1
+        cardIndex: 1,
+        isExpanded: true
     )
     .padding()
     .background(Color.gray.opacity(0.1))
@@ -496,7 +495,8 @@ struct ConversationCard: View {
             isFlipped: false,
             isLoading: true
         ),
-        cardIndex: 2
+        cardIndex: 2,
+        isExpanded: false
     )
     .padding()
     .background(Color.gray.opacity(0.1))
@@ -509,7 +509,8 @@ struct ConversationCard: View {
                 question: "What's your favorite childhood memory?",
                 category: .firstDate
             ),
-            cardIndex: 0
+            cardIndex: 0,
+            isExpanded: false
         )
         
         ConversationCard(
@@ -518,7 +519,8 @@ struct ConversationCard: View {
                 category: .personalGrowth,
                 isFlipped: true
             ),
-            cardIndex: 1
+            cardIndex: 1,
+            isExpanded: true
         )
         
         ConversationCard(
@@ -526,7 +528,8 @@ struct ConversationCard: View {
                 question: "If you could be any fictional character for a day, who would you choose?",
                 category: .funAndPlayful
             ),
-            cardIndex: 2
+            cardIndex: 2,
+            isExpanded: false
         )
     }
     .padding()

@@ -72,18 +72,22 @@ public final class CardViewModel: ObservableObject {
     
     // MARK: - Public Methods
     
-    /// Loads a new question for the specified category with smooth animation
-    /// - Parameter category: The question category to generate
-    func loadQuestion(for category: QuestionCategory) async {
-        guard !isLoading else { return }
-        
+    /// Sets the card to loading state immediately for UI feedback
+    func setLoadingState(for category: QuestionCategory) {
         self.category = category
         isLoading = true
         errorMessage = nil
-        
-        // Reset reveal animation state
-        revealProgress = 0.0
         displayedQuestion = ""
+        revealProgress = 0.0
+    }
+    
+    /// Loads a new question for the specified category with smooth animation
+    /// - Parameter category: The question category to generate
+    func loadQuestion(for category: QuestionCategory) async {
+        // If not already loading, set up the loading state
+        if !isLoading {
+            setLoadingState(for: category)
+        }
         
         do {
             let newQuestion = try await questionEngine.generateQuestion(for: category)

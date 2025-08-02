@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Koala Head -->
+  <ellipse cx="60" cy="65" rx="25" ry="30" fill="#DDDDDD"/>
+  
+  <!-- Koala Ears -->
+  <ellipse cx="40" cy="45" rx="12" ry="15" fill="#CCCCCC"/>
+  <ellipse cx="80" cy="45" rx="12" ry="15" fill="#CCCCCC"/>
+  <ellipse cx="40" cy="45" rx="8" ry="10" fill="#BBBBBB"/>
+  <ellipse cx="80" cy="45" rx="8" ry="10" fill="#BBBBBB"/>
+  
+  <!-- Koala Eyes -->
+  <circle cx="50" cy="60" r="4" fill="#333333"/>
+  <circle cx="70" cy="60" r="4" fill="#333333"/>
+  <circle cx="51" cy="59" r="1.5" fill="#FFFFFF"/>
+  <circle cx="71" cy="59" r="1.5" fill="#FFFFFF"/>
+  
+  <!-- Koala Nose -->
+  <ellipse cx="60" cy="70" rx="3" ry="2" fill="#222222"/>
+  
+  <!-- Koala Mouth -->
+  <path d="M 55 75 Q 60 78 65 75" stroke="#333333" stroke-width="2" fill="none"/>
+  
+  <!-- Body hint -->
+  <ellipse cx="60" cy="100" rx="15" ry="12" fill="#EEEEEE"/>
+</svg>

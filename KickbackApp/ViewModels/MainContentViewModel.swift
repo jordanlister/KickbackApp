@@ -104,16 +104,21 @@ public final class MainContentViewModel: ObservableObject {
         let cardVM = cardViewModels[index]
         cardVM.flipUp()
         
-        // Load question if it's still a placeholder
-        if cardVM.question == "Tap to reveal question..." {
-            Task {
-                await cardVM.loadQuestion(for: cardVM.category)
-            }
-        }
-        
         // Haptic feedback for card selection
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
+        
+        // Load question after animation completes (delay to allow smooth transition)
+        if cardVM.question.isEmpty || cardVM.question == "Tap to reveal question..." {
+            // Set loading state immediately for UI feedback
+            cardVM.setLoadingState(for: cardVM.category)
+            
+            Task {
+                // Wait for animation to complete before starting generation
+                try? await Task.sleep(nanoseconds: 800_000_000) // 0.8 seconds
+                await cardVM.loadQuestion(for: cardVM.category)
+            }
+        }
     }
     
     /// Deselects all cards and returns to deck view
