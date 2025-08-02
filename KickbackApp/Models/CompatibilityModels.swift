@@ -211,6 +211,8 @@ public enum AnalysisType: String, Codable, CaseIterable {
     case comparative = "comparative"
     case sessionBased = "session_based"
     case categorySpecific = "category_specific"
+    case cardAnalysis = "card_analysis"  // Stage 1: Individual card analysis
+    case synthesis = "synthesis"        // Stage 2: Aggregate analysis
     
     public var displayName: String {
         switch self {
@@ -222,6 +224,10 @@ public enum AnalysisType: String, Codable, CaseIterable {
             return "Session Insights"
         case .categorySpecific:
             return "Category-Specific Analysis"
+        case .cardAnalysis:
+            return "Single Card Analysis"
+        case .synthesis:
+            return "Multi-Card Synthesis"
         }
     }
 }

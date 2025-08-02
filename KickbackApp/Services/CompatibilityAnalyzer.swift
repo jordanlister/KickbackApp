@@ -240,40 +240,51 @@ public final class CompatibilityAnalyzerService: CompatibilityAnalyzer {
     
     /// Generates LLM response with retry logic and optional seed for deterministic results
     private func generateWithRetry(prompt: String, seed: UInt64? = nil) async throws -> String {
+        logger.info("Generating LLM response for compatibility analysis")
+        
         var lastError: Error?
         
-        for attempt in 1...(maxRetryAttempts + 1) {
+        for attempt in 1...maxRetryAttempts {
             do {
-                logger.debug("Attempt \(attempt) of \(self.maxRetryAttempts + 1) for LLM generation")
+                logger.debug("Attempt \\(attempt) of \\(maxRetryAttempts) for LLM generation")
                 
-                let response = try await withTimeout(seconds: requestTimeout) { [self] in
-                    // If seed is provided, we could set it here for deterministic results
-                    // For now, we'll pass it through in the prompt
-                    try await llmService.generateResponse(for: prompt)
+                // Generate response with timeout
+                let response = try await withTimeout(seconds: requestTimeout) {
+                    try await self.llmService.generateResponse(for: prompt)
                 }
                 
+                // Validate response is not empty
+                guard !response.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty else {
+                    throw CompatibilityAnalysisError.invalidResponse("Empty response from LLM")
+                }
+                
+                logger.info("Successfully generated LLM response on attempt \\(attempt)")
                 return response
                 
             } catch {
                 lastError = error
-                logger.warning("Attempt \(attempt) failed: \(error.localizedDescription)")
+                logger.warning("LLM generation attempt \\(attempt) failed: \\(error.localizedDescription)")
                 
-                // Don't retry on the last attempt
-                if attempt <= maxRetryAttempts {
-                    // Exponential backoff with jitter
-                    let delay = min(pow(2.0, Double(attempt - 1)), 8.0) + Double.random(in: 0...1)
-                    logger.debug("Retrying after \(delay, privacy: .public)s delay")
-                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                // Don't retry on certain types of errors
+                if let analysisError = error as? CompatibilityAnalysisError {
+                    switch analysisError {
+                    case .configurationError, .invalidResponse:
+                        throw analysisError
+                    default:
+                        break
+                    }
+                }
+                
+                // Add delay before retry (exponential backoff)
+                if attempt < maxRetryAttempts {
+                    let delay = Double(attempt) * 0.5
+                    try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                 }
             }
         }
         
         // All attempts failed
-        if let llmError = lastError as? LLMServiceError {
-            throw CompatibilityAnalysisError.llmServiceError(llmError)
-        } else {
-            throw CompatibilityAnalysisError.processingError("Failed after \(self.maxRetryAttempts + 1) attempts: \(lastError?.localizedDescription ?? "Unknown error")")
-        }
+        throw lastError ?? CompatibilityAnalysisError.processingError("Failed to generate response after \\(maxRetryAttempts) attempts")
     }
     
     /// Adds timeout to async operations
@@ -617,7 +628,6 @@ public struct CompatibilityResponseProcessor {
     
     private func calculateAlignment(_ score1: Int, _ score2: Int) -> AlignmentScore {
         let difference = abs(score1 - score2)
-        let average = (score1 + score2) / 2
         
         let alignmentScore: Double
         let alignmentType: AlignmentType

@@ -150,6 +150,12 @@ public final class CardViewModel: ObservableObject {
             voiceAnswer = ""
             isVoiceInputMode = false
         }
+        
+        // Clear answer data and player state
+        cardAnswers = nil
+        currentPlayer = nil
+        isCardComplete = false
+        isCompletingCard = false
     }
     
     // MARK: - Voice Recording Methods
@@ -240,15 +246,10 @@ public final class CardViewModel: ObservableObject {
             audioQuality: audioTranscriber.audioLevel
         )
         
-        print("Recording answer for player \(player.playerNumber) (\(player.displayName)): \(voiceAnswer)")
-        
         // Add answer to collection
         var updatedAnswers = answers
         updatedAnswers.setAnswer(playerAnswer)
         cardAnswers = updatedAnswers
-        
-        print("After recording: Player1 answered? \(updatedAnswers.player1Answer != nil), Player2 answered? \(updatedAnswers.player2Answer != nil)")
-        print("Complete? \(updatedAnswers.isComplete)")
         
         // Clear current voice answer
         voiceAnswer = ""
@@ -268,13 +269,11 @@ public final class CardViewModel: ObservableObject {
     private func switchToOtherPlayer() {
         // Notify parent view that player needs to switch
         onPlayerNeedsToSwitch?()
-        print("Ready for next player to answer")
     }
     
     /// Sets the current player (called by parent view)
     func setCurrentPlayer(_ player: Player) {
         currentPlayer = player
-        print("Current answering player: \(player.displayName)")
     }
     
     /// Checks if both players have answered and triggers completion flow

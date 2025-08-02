@@ -36,6 +36,11 @@ struct ContentView: View {
                 LaunchAnimationView(progress: mainViewModel.launchAnimationProgress)
                     .transition(.opacity)
                     .zIndex(1)
+            } else if mainViewModel.showGameResults {
+                // Game completion results
+                GameCompletionResultsView(mainViewModel: mainViewModel)
+                    .transition(.opacity)
+                    .zIndex(0)
             } else {
                 // Main card interface
                 CardDeckView(mainViewModel: mainViewModel)
@@ -43,8 +48,8 @@ struct ContentView: View {
                     .zIndex(0)
             }
             
-            // Global navigation button - only show when not in onboarding or launch animation
-            if !mainViewModel.showOnboarding && !mainViewModel.showLaunchAnimation {
+            // Global navigation button - only show when not in onboarding, launch animation, or game results
+            if !mainViewModel.showOnboarding && !mainViewModel.showLaunchAnimation && !mainViewModel.showGameResults {
                 VStack {
                     HStack {
                         Spacer()
@@ -91,6 +96,7 @@ struct ContentView: View {
         }
         .animation(.easeInOut(duration: 0.8), value: mainViewModel.showLaunchAnimation)
         .animation(.easeInOut(duration: 0.8), value: mainViewModel.showOnboarding)
+        .animation(.easeInOut(duration: 0.8), value: mainViewModel.showGameResults)
         .onAppear {
             startAppIfNeeded()
         }

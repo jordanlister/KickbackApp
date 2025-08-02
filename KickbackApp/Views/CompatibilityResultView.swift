@@ -11,13 +11,20 @@ struct CompatibilityResultView: View {
         ScrollView {
             VStack(spacing: 24) {
                 if viewModel.isAnalyzing {
-                    AnalysisProgressView(viewModel: viewModel)
+                    AnalysisProgressView()
                 } else if let result = viewModel.currentResult {
                     CompatibilityScoreCard(result: result, viewModel: viewModel)
                     CompatibilityDimensionsView(dimensions: result.dimensions)
                     CompatibilityInsightsView(insights: result.insights, viewModel: viewModel)
                 } else if viewModel.hasError {
-                    ErrorStateView(viewModel: viewModel)
+                    ErrorStateView(
+                        error: viewModel.currentError?.localizedDescription ?? "Unknown error",
+                        onRetry: {
+                            Task {
+                                await viewModel.retryAnalysis()
+                            }
+                        }
+                    )
                 } else {
                     EmptyStateView()
                 }
@@ -48,74 +55,6 @@ struct CompatibilityResultView: View {
     }
 }
 
-// MARK: - Analysis Progress View
-
-struct AnalysisProgressView: View {
-    @ObservedObject var viewModel: CompatibilityViewModel
-    
-    var body: some View {
-        VStack(spacing: 20) {
-            // Progress indicator
-            ZStack {
-                Circle()
-                    .stroke(Color.gray.opacity(0.3), lineWidth: 8)
-                    .frame(width: 120, height: 120)
-                
-                Circle()
-                    .trim(from: 0, to: viewModel.analysisProgress)
-                    .stroke(
-                        LinearGradient(
-                            colors: [.blue, .purple],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        style: StrokeStyle(lineWidth: 8, lineCap: .round)
-                    )
-                    .frame(width: 120, height: 120)
-                    .rotationEffect(.degrees(-90))
-                    .animation(.easeInOut(duration: 0.5), value: viewModel.analysisProgress)
-                
-                Text("\(Int(viewModel.analysisProgress * 100))%")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
-            }
-            
-            VStack(spacing: 8) {
-                Text("Analyzing Your Response")
-                    .font(.title3)
-                    .fontWeight(.medium)
-                
-                Text(viewModel.progressText)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            
-            // Animated thinking dots
-            HStack(spacing: 4) {
-                ForEach(0..<3) { index in
-                    Circle()
-                        .fill(Color.blue)
-                        .frame(width: 8, height: 8)
-                        .opacity(0.3)
-                        .animation(
-                            .easeInOut(duration: 0.6)
-                            .repeatForever()
-                            .delay(Double(index) * 0.2),
-                            value: viewModel.isAnalyzing
-                        )
-                        .onAppear {
-                            if viewModel.isAnalyzing {
-                                // Trigger animation
-                            }
-                        }
-                }
-            }
-            .opacity(viewModel.isAnalyzing ? 1 : 0)
-        }
-        .padding(.vertical, 40)
-    }
-}
 
 // MARK: - Compatibility Score Card
 
@@ -331,45 +270,6 @@ struct DimensionInsightsView: View {
     }
 }
 
-// MARK: - Error State View
-
-struct ErrorStateView: View {
-    @ObservedObject var viewModel: CompatibilityViewModel
-    
-    var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 48))
-                .foregroundColor(.orange)
-            
-            VStack(spacing: 8) {
-                Text("Analysis Failed")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                
-                if let error = viewModel.currentError {
-                    Text(error.localizedDescription)
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-            }
-            
-            Button("Try Again") {
-                Task {
-                    await viewModel.retryAnalysis()
-                }
-            }
-            .buttonStyle(.borderedProminent)
-        }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-        )
-    }
-}
 
 // MARK: - Empty State View
 

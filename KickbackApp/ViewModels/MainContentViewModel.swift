@@ -42,6 +42,17 @@ public final class MainContentViewModel: ObservableObject {
     /// Error state for critical app failures
     @Published var criticalError: String?
     
+    /// Completed card answers for compatibility analysis
+    @Published var completedCardAnswers: [CardAnswers] = []
+    
+    /// Game completion analysis results
+    @Published var gameCompletionResult: GameCompletionResult?
+    
+    /// Game completion state management
+    @Published var isAnalyzingGame: Bool = false
+    @Published var showGameResults: Bool = false
+    @Published var gameAnalysisError: String?
+    
     /// Onboarding state management
     @Published var showOnboarding: Bool = false
     
@@ -68,6 +79,7 @@ public final class MainContentViewModel: ObservableObject {
     // MARK: - Dependencies
     
     private let questionEngine: QuestionEngine
+    private let gameCompletionService: GameCompletionService
     
     // MARK: - Gameplay Integration
     
@@ -77,10 +89,13 @@ public final class MainContentViewModel: ObservableObject {
     // MARK: - Initialization
     
     /// Initializes MainContentViewModel with dependency injection
-    /// - Parameter questionEngine: Service for generating questions
-    init(questionEngine: QuestionEngine? = nil) {
-        // Use real QuestionEngineService for actual AI-powered question generation
+    /// - Parameters:
+    ///   - questionEngine: Service for generating questions
+    ///   - gameCompletionService: Service for analyzing completed games
+    init(questionEngine: QuestionEngine? = nil, gameCompletionService: GameCompletionService? = nil) {
+        // Use real services for actual AI-powered question generation and analysis
         self.questionEngine = questionEngine ?? QuestionEngineService()
+        self.gameCompletionService = gameCompletionService ?? GameCompletionServiceImpl()
         setupInitialState()
         
         // Initialize gameplay integration
@@ -292,6 +307,238 @@ public final class MainContentViewModel: ObservableObject {
             Task {
                 await self.startLaunchSequence()
             }
+        }
+    }
+    
+    /// Stores completed card answers for compatibility analysis
+    /// - Parameter cardAnswers: The completed card answers to store
+    func storeCompletedCardAnswers(_ cardAnswers: CardAnswers) {
+        guard cardAnswers.isComplete else {
+            print("Warning: Attempting to store incomplete card answers")
+            return
+        }
+        
+        completedCardAnswers.append(cardAnswers)
+        print("Stored completed card answers. Total cards: \(completedCardAnswers.count)")
+        
+        // Check if we have enough cards for game completion (5 questions)
+        let requiredQuestions = getRequiredQuestionsForGameMode()
+        if completedCardAnswers.count >= requiredQuestions {
+            print("Game complete! \(completedCardAnswers.count)/\(requiredQuestions) questions answered")
+            triggerGameCompletion()
+        } else {
+            print("Progress: \(completedCardAnswers.count)/\(requiredQuestions) questions answered")
+        }
+    }
+    
+    /// Gets the required number of questions based on the current game mode
+    /// - Returns: Number of questions required to complete the game
+    func getRequiredQuestionsForGameMode() -> Int {
+        // All game modes require 5 questions for completion
+        return 5
+    }
+    
+    /// Triggers game completion flow with comprehensive compatibility analysis
+    private func triggerGameCompletion() {
+        print("Triggering game completion with \(completedCardAnswers.count) completed cards")
+        
+        Task {
+            await performGameCompletionAnalysis()
+        }
+    }
+    
+    /// Performs comprehensive game completion analysis
+    @MainActor
+    private func performGameCompletionAnalysis() async {
+        guard completedCardAnswers.count >= getRequiredQuestionsForGameMode() else {
+            print("❌ Insufficient completed cards for analysis: \(completedCardAnswers.count)/\(getRequiredQuestionsForGameMode())")
+            return
+        }
+        
+        print("🎯 Starting game completion analysis with \(completedCardAnswers.count) answers...")
+        isAnalyzingGame = true
+        gameAnalysisError = nil
+        
+        // Show results screen immediately to indicate processing
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+            showGameResults = true
+            showCards = false
+        }
+        
+        do {
+            print("🧠 Processing compatibility analysis...")
+            let analysisResult = try await gameCompletionService.processGameCompletion(completedCardAnswers)
+            
+            gameCompletionResult = analysisResult
+            print("✅ Game analysis completed successfully!")
+            
+        } catch {
+            print("❌ Game analysis failed: \(error.localizedDescription)")
+            gameAnalysisError = error.localizedDescription
+            
+            // Create a basic fallback result if analysis fails
+            if gameCompletionResult == nil {
+                print("🔄 Creating fallback result...")
+                gameCompletionResult = createFallbackGameResult()
+            }
+        }
+        
+        isAnalyzingGame = false
+        print("🏁 Game completion analysis finished. Results: \(gameCompletionResult != nil ? "✅" : "❌")")
+    }
+    
+    /// Retries game completion analysis after an error
+    func retryGameAnalysis() {
+        gameAnalysisError = nil
+        Task {
+            await performGameCompletionAnalysis()
+        }
+    }
+    
+    /// Starts a new game session, resetting all state
+    func startNewGame() {
+        // Reset all game state
+        completedCardAnswers.removeAll()
+        gameCompletionResult = nil
+        gameAnalysisError = nil
+        showGameResults = false
+        
+        // Reset player setup and return to mode selection
+        playerManager = PlayerManager()
+        gameplayIntegration = GameplayIntegration(mainContentViewModel: self)
+        
+        withAnimation(.spring(response: 0.8, dampingFraction: 0.9)) {
+            showModeSelection = true
+            showPlayerSetup = false
+        }
+        
+        // Reset cards
+        for cardVM in cardViewModels {
+            cardVM.reset()
+        }
+        
+        print("New game started - all state reset")
+    }
+    
+    /// Creates a fallback game result when analysis fails
+    private func createFallbackGameResult() -> GameCompletionResult {
+        // Create basic fallback data
+        let basicDimensions = CompatibilityDimensions(
+            emotionalOpenness: 75, clarity: 70, empathy: 75, vulnerability: 65, communicationStyle: 70
+        )
+        
+        let basicInsight = CompatibilityInsight(
+            type: .compatibility,
+            title: "Analysis Unavailable",
+            description: "We couldn't complete the full analysis, but you both completed 5 questions together!",
+            confidence: .medium
+        )
+        
+        let basicMetadata = AnalysisMetadata(
+            promptUsed: "fallback",
+            rawLLMResponse: "fallback",
+            processingDuration: 0.0,
+            analysisType: .individual,
+            questionCategory: .firstDate,
+            responseLength: 0,
+            seed: nil
+        )
+        
+        let basicResult = CompatibilityResult(
+            score: 70,
+            summary: "You both engaged thoughtfully with the questions!",
+            tone: "positive",
+            dimensions: basicDimensions,
+            insights: [basicInsight],
+            analysisMetadata: basicMetadata
+        )
+        
+        let sessionAnalysis = SessionAnalysis(
+            sessionId: UUID(),
+            responses: [basicResult, basicResult],
+            overallSessionScore: 70,
+            trendAnalysis: TrendAnalysis(
+                scoreProgression: [65, 70, 75],
+                improvingDimensions: ["Clarity"],
+                consistentStrengths: ["Empathy"],
+                developmentAreas: ["Vulnerability"],
+                confidenceGrowth: 0.1
+            ),
+            categoryBreakdown: [.firstDate: 70],
+            sessionInsights: [basicInsight]
+        )
+        
+        let playerAnalysis = PlayerSessionAnalysis(
+            playerNumber: 1,
+            individualResults: [basicResult],
+            sessionAnalysis: sessionAnalysis,
+            responseCount: completedCardAnswers.count,
+            averageScore: 70,
+            strongestDimensions: ["Empathy", "Clarity"],
+            growthAreas: ["Vulnerability"]
+        )
+        
+        let comparativeAnalysis = ComparativeGameAnalysis(
+            questionComparisons: [],
+            overallCompatibilityScore: 70,
+            compatibilityTier: .moderate,
+            relationshipInsights: [],
+            communicationSynergy: CommunicationSynergy(
+                synergyScore: 0.7,
+                strengths: ["Good engagement"],
+                challenges: [],
+                recommendations: ["Continue practicing open communication"]
+            ),
+            recommendedNextSteps: [
+                "Continue having meaningful conversations",
+                "Explore deeper topics together",
+                "Practice active listening"
+            ]
+        )
+        
+        let gameMetrics = GameMetrics(
+            overallScore: 70,
+            compatibilityPotential: 75,
+            communicationQuality: 70,
+            engagementLevel: 80,
+            balanceScore: 75,
+            insightfulness: 65
+        )
+        
+        return GameCompletionResult(
+            id: UUID(),
+            player1Analysis: playerAnalysis,
+            player2Analysis: PlayerSessionAnalysis(
+                playerNumber: 2,
+                individualResults: [basicResult],
+                sessionAnalysis: sessionAnalysis,
+                responseCount: completedCardAnswers.count,
+                averageScore: 70,
+                strongestDimensions: ["Empathy", "Clarity"],
+                growthAreas: ["Vulnerability"]
+            ),
+            comparativeAnalysis: comparativeAnalysis,
+            sessionInsights: [
+                SessionInsight(
+                    type: .communicationStrength,
+                    title: "Great Completion!",
+                    description: "You both completed all \(completedCardAnswers.count) questions together.",
+                    confidence: .high,
+                    impact: .positive
+                )
+            ],
+            gameMetrics: gameMetrics,
+            cardAnswers: completedCardAnswers,
+            completionDuration: 0.0,
+            completedAt: Date()
+        )
+    }
+    
+    /// Returns to main menu from results screen
+    func returnToMainMenu() {
+        withAnimation(.spring(response: 0.8, dampingFraction: 0.9)) {
+            showGameResults = false
+            showModeSelection = true
         }
     }
     

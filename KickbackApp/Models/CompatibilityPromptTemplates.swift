@@ -43,6 +43,10 @@ public struct CompatibilityPromptTemplates: CompatibilityPromptTemplateProvider 
             return sessionBasedAnalysisTemplate
         case .categorySpecific:
             return categorySpecificAnalysisTemplate
+        case .cardAnalysis:
+            return cardAnalysisTemplate
+        case .synthesis:
+            return synthesisTemplate
         }
     }
     
@@ -90,80 +94,38 @@ public struct CompatibilityPromptTemplates: CompatibilityPromptTemplateProvider 
     
     private var individualAnalysisTemplate: String {
         """
-        You are an expert relationship compatibility analyst specializing in evaluating emotional intelligence, communication patterns, and interpersonal dynamics from conversational responses.
+        Analyze this relationship response:
 
-        Your task is to analyze the following transcribed response to a relationship question and generate meaningful compatibility insights using a structured approach.
+        Q: "{{question}}"
+        A: "{{response}}"
 
-        QUESTION ASKED:
-        "{{question}}"
+        Rate 0-100 for: emotional openness, clarity, empathy, vulnerability, communication style. 
+        Score based on relationship readiness: 90-100=exceptional, 80-89=strong, 70-79=good, 60-69=moderate, 50-59=basic, <50=limited.
 
-        CATEGORY: {{question_category}}
-
-        USER'S TRANSCRIBED RESPONSE:
-        "{{response}}"
-
-        ANALYSIS CONTEXT:
-        - Response Length: {{response_length}}
-        - Analysis Type: {{analysis_type}}
-        - Detail Level: {{detail_level}}
-        - Focus Areas: {{focus_areas}}
-        - Cultural Context: {{cultural_context}}
-        - User Context: {{user_context}}
-
-        {{seed_instruction}}
-
-        ANALYSIS FRAMEWORK:
-        Evaluate the response across these five key dimensions (0-100 scale):
-
-        1. EMOTIONAL OPENNESS (0-100): Willingness to share feelings and emotional experiences
-        2. CLARITY (0-100): Clear, articulate self-expression and communication
-        3. EMPATHY (0-100): Understanding and consideration of others' perspectives
-        4. VULNERABILITY (0-100): Authentic self-disclosure and genuine openness
-        5. COMMUNICATION STYLE (0-100): How effectively they express themselves
-
-        SCORING METHODOLOGY:
-        - 90-100: Exceptional emotional intelligence and relationship readiness
-        - 80-89: Strong compatibility indicators with mature communication
-        - 70-79: Good relationship potential with some growth areas
-        - 60-69: Moderate compatibility with notable development needs
-        - 50-59: Basic compatibility with significant growth opportunities
-        - Below 50: Limited relationship readiness requiring substantial development
-
-        QUALITY STANDARDS:
-        - Ground all insights in actual response content - never fabricate
-        - Provide emotionally intelligent feedback that feels insightful and constructive
-        - Avoid superficial judgments or quiz-like assessments
-        - Focus on genuine relationship compatibility factors, not personality stereotypes
-        - Maintain a thoughtful, non-judgmental tone
-
-        REQUIRED OUTPUT FORMAT:
-        You must respond with a valid JSON object containing exactly these fields:
-
+        Return only JSON:
         {
-            "score": <integer 0-100>,
-            "summary": "<2-3 sentence natural language summary>",
-            "tone": "<detected emotional tone in 1-2 words>",
+            "score": <0-100>,
+            "summary": "<brief 2-sentence summary>",
+            "tone": "<1-2 words>",
             "dimensions": {
-                "emotionalOpenness": <integer 0-100>,
-                "clarity": <integer 0-100>,
-                "empathy": <integer 0-100>,
-                "vulnerability": <integer 0-100>,
-                "communicationStyle": <integer 0-100>
+                "emotionalOpenness": <0-100>,
+                "clarity": <0-100>,
+                "empathy": <0-100>,
+                "vulnerability": <0-100>,
+                "communicationStyle": <0-100>
             },
             "insights": [
                 {
-                    "type": "<strength|growth_area|communication_pattern|emotional_intelligence|relationship_readiness|compatibility>",
-                    "title": "<brief insight title>",
-                    "description": "<1-2 sentence description>",
-                    "confidence": "<low|medium|high|very_high>",
-                    "relatedDimension": "<dimension name or null>"
+                    "type": "strength",
+                    "title": "Brief insight title",
+                    "description": "One sentence description based on response content.",
+                    "confidence": "high",
+                    "relatedDimension": "emotionalOpenness"
                 }
             ]
         }
-
-        Provide 2-4 insights that are specific, actionable, and grounded in the actual response content.
-
-        {{format_instructions}}
+        
+        Provide 2-3 insights based on actual response content.
         """
     }
     
@@ -171,45 +133,24 @@ public struct CompatibilityPromptTemplates: CompatibilityPromptTemplateProvider 
     
     private var comparativeAnalysisTemplate: String {
         """
-        You are an expert relationship compatibility analyst specializing in comparing two individuals' responses to relationship questions to assess their compatibility potential.
+        Compare these responses to: "{{question}}"
 
-        Your task is to analyze compatibility between two users based on their responses to the same question.
+        User 1: "{{response}}"
+        User 2: "{{response_2}}"
 
-        QUESTION ASKED:
-        "{{question}}"
-
-        CATEGORY: {{question_category}}
-
-        USER 1 RESPONSE:
-        "{{response}}"
-
-        USER 2 RESPONSE:
-        "{{response_2}}"
-
-        ANALYSIS CONTEXT:
-        - Analysis Type: {{analysis_type}}
-        - Detail Level: {{detail_level}}
-        - Focus Areas: {{focus_areas}}
-        - Cultural Context: {{cultural_context}}
-
-        {{seed_instruction}}
-
-        COMPARATIVE ANALYSIS FRAMEWORK:
-        1. Analyze each response individually using the five dimensions
-        2. Compare communication styles and emotional approaches
-        3. Identify areas of alignment, complementarity, and potential challenges
-        4. Assess overall relationship compatibility potential
-
-        ALIGNMENT TYPES:
-        - COMPLEMENT: Different but complementary strengths
-        - HARMONY: Similar levels and approaches
-        - CONTRAST: Significant differences requiring navigation
-        - BALANCE: One strong, one developing (can be positive)
-
-        REQUIRED OUTPUT FORMAT:
-        You must respond with a valid JSON object for comparative analysis.
-
-        {{format_instructions}}
+        Analyze compatibility. Return JSON:
+        {
+            "overallCompatibility": <0-100>,
+            "alignmentType": "harmony",
+            "summary": "<brief compatibility assessment>",
+            "insights": [
+                {
+                    "type": "compatibility", 
+                    "description": "One sentence compatibility insight.",
+                    "confidence": "high"
+                }
+            ]
+        }
         """
     }
     
@@ -217,29 +158,25 @@ public struct CompatibilityPromptTemplates: CompatibilityPromptTemplateProvider 
     
     private var sessionBasedAnalysisTemplate: String {
         """
-        You are an expert relationship compatibility analyst specializing in analyzing patterns across multiple responses in a single session.
-
-        Your task is to identify trends, consistency patterns, and overall relationship readiness based on multiple question responses.
-
-        SESSION RESPONSES:
+        Analyze session patterns from responses:
         {{response}}
 
-        ANALYSIS CONTEXT:
-        - Analysis Type: {{analysis_type}}
-        - Detail Level: {{detail_level}}
-        - Focus Areas: {{focus_areas}}
-        - Cultural Context: {{cultural_context}}
-
-        {{seed_instruction}}
-
-        SESSION ANALYSIS FRAMEWORK:
-        1. Identify consistency patterns across responses
-        2. Track dimension progression throughout the session
-        3. Note developing confidence and openness
-        4. Assess overall relationship readiness trajectory
-        5. Provide session-level insights and recommendations
-
-        {{format_instructions}}
+        Identify trends, consistency, growth. Return JSON:
+        {
+            "overallScore": <0-100>,
+            "trendAnalysis": {
+                "improvingAreas": ["<areas>"],
+                "consistentStrengths": ["<strengths>"],
+                "developmentNeeds": ["<needs>"]
+            },
+            "sessionInsights": [
+                {
+                    "type": "growth|strength|pattern",
+                    "description": "<1 sentence>",
+                    "confidence": "low|medium|high"
+                }
+            ]
+        }
         """
     }
     
@@ -247,33 +184,78 @@ public struct CompatibilityPromptTemplates: CompatibilityPromptTemplateProvider 
     
     private var categorySpecificAnalysisTemplate: String {
         """
-        You are an expert relationship compatibility analyst specializing in category-specific relationship dynamics.
+        Analyze {{question_category}} response:
 
-        Your task is to provide analysis tailored to the specific relationship category and stage.
+        Q: "{{question}}"
+        A: "{{response}}"
 
-        QUESTION ASKED:
-        "{{question}}"
+        Category focus: {{category_guidance}}
 
-        CATEGORY: {{question_category}}
+        Rate 0-100 for emotional openness, clarity, empathy, vulnerability, communication style.
 
-        USER'S RESPONSE:
-        "{{response}}"
+        Return JSON:
+        {
+            "score": <0-100>,
+            "summary": "<brief assessment>",
+            "tone": "<1-2 words>",
+            "dimensions": {
+                "emotionalOpenness": <0-100>,
+                "clarity": <0-100>,
+                "empathy": <0-100>,
+                "vulnerability": <0-100>,
+                "communicationStyle": <0-100>
+            },
+            "insights": [
+                {
+                    "type": "strength",
+                    "title": "Brief insight title", 
+                    "description": "One sentence description.",
+                    "confidence": "high"
+                }
+            ]
+        }
+        """
+    }
+    
+    // MARK: - Card Analysis Template (Stage 1 - Individual Card)
+    
+    /// Very short template for analyzing a single card with both players' answers
+    /// Optimized to stay under 800 characters to prevent context window issues
+    private var cardAnalysisTemplate: String {
+        """
+        Q: "{{question}}"
+        P1: "{{player1_answer}}"
+        P2: "{{player2_answer}}"
 
-        ANALYSIS CONTEXT:
-        - Analysis Type: {{analysis_type}}
-        - Detail Level: {{detail_level}}
-        - Focus Areas: {{focus_areas}}
-        - Cultural Context: {{cultural_context}}
-        - User Context: {{user_context}}
+        Return JSON only:
+        {
+            "player1Summary": "brief summary",
+            "player2Summary": "brief summary", 
+            "compatibilityInsights": "key insight",
+            "compatibilityScore": 75,
+            "player1Score": 80,
+            "player2Score": 70,
+            "overallTone": "positive",
+            "primaryDimension": "clarity",
+            "showedAlignment": true
+        }
+        """
+    }
+    
+    // MARK: - Synthesis Template (Stage 2 - Aggregate Analysis)
+    
+    /// Template for synthesizing multiple card summaries into final game results
+    /// Takes 5 CardAnalysisSummary compact representations as input
+    private var synthesisTemplate: String {
+        """
+        Cards: {{card_summaries}}
 
-        {{seed_instruction}}
-
-        CATEGORY-SPECIFIC CONSIDERATIONS:
-        {{category_guidance}}
-
-        Focus your analysis on aspects most relevant to the {{question_category}} category, while maintaining the core five-dimension framework.
-
-        {{format_instructions}}
+        Analyze compatibility patterns. Return JSON:
+        {
+            "overallScore": 75,
+            "insights": ["pattern1", "pattern2"],
+            "recommendation": "brief advice"
+        }
         """
     }
     
@@ -304,73 +286,31 @@ public struct CompatibilityPromptTemplates: CompatibilityPromptTemplateProvider 
     internal func categoryGuidance(for category: QuestionCategory) -> String {
         switch category {
         case .blindDate, .firstDate:
-            return """
-            - Focus on initial impression and openness to connection
-            - Assess comfort with sharing appropriate personal information
-            - Evaluate social skills and conversation ability
-            - Consider respect for boundaries and mutual interest
-            """
+            return "Focus on openness, social comfort, boundary respect"
             
         case .earlyDating:
-            return """
-            - Evaluate emotional availability and dating readiness
-            - Assess communication of interests and values
-            - Look for signs of emotional maturity
-            - Consider ability to balance sharing with listening
-            """
+            return "Assess emotional availability, maturity, value communication"
             
         case .deepCouple, .intimacyBuilding:
-            return """
-            - Focus on emotional depth and vulnerability capacity
-            - Assess ability to share intimate thoughts and feelings
-            - Evaluate empathy and emotional responsiveness
-            - Consider trust-building and authentic connection
-            """
+            return "Evaluate depth, vulnerability, trust-building capacity"
             
         case .longTermRelationship:
-            return """
-            - Evaluate commitment and future-oriented thinking
-            - Assess ability to navigate relationship challenges
-            - Look for signs of mature partnership perspective
-            - Consider growth mindset and adaptability
-            """
+            return "Look for commitment, challenge navigation, partnership mindset"
             
         case .conflictResolution:
-            return """
-            - Focus on emotional regulation and conflict navigation
-            - Assess empathy and perspective-taking ability
-            - Evaluate communication during disagreement
-            - Consider problem-solving approach and fairness
-            """
+            return "Assess emotional regulation, empathy, problem-solving approach"
             
         case .emotionalIntelligence:
-            return """
-            - Evaluate self-awareness and emotional vocabulary
-            - Assess understanding of emotional dynamics
-            - Look for empathy and emotional responsiveness
-            - Consider emotional regulation and expression
-            """
+            return "Evaluate self-awareness, emotional vocabulary, regulation"
             
         default:
-            return """
-            - Apply general compatibility analysis principles
-            - Focus on communication clarity and emotional openness
-            - Assess relationship readiness appropriate to the category
-            - Consider overall emotional intelligence and maturity
-            """
+            return "General compatibility: clarity, openness, relationship readiness"
         }
     }
     
     private var formatInstructions: String {
         """
-        OUTPUT REQUIREMENTS:
-        - Respond ONLY with valid JSON - no additional text before or after
-        - Ensure all scores are integers between 0-100
-        - Base all insights on actual response content
-        - Provide specific, actionable feedback
-        - Maintain professional, supportive tone
-        - Include 2-4 insights minimum
-        - Ensure JSON is properly formatted and complete
+        Return only valid JSON. Base insights on actual content. Scores 0-100.
         """
     }
 }
@@ -439,18 +379,83 @@ public struct CompatibilityPromptProcessor {
             template = template.replacingOccurrences(of: "{{seed_instruction}}", with: "")
         }
         
-        let formatInstructions = """
-        OUTPUT REQUIREMENTS:
-        - Respond ONLY with valid JSON for comparative analysis
-        - Include individual analysis for both users
-        - Provide overall compatibility assessment
-        - Include alignment analysis for each dimension
-        - Base all insights on actual response content
-        """
+        let formatInstructions = "Return only valid JSON."
         
         template = template.replacingOccurrences(of: "{{format_instructions}}", with: formatInstructions)
         
         return cleanupTemplate(template)
+    }
+    
+    /// Processes template for card analysis with both players' answers (Stage 1)
+    public func processCardAnalysisTemplate(
+        question: String,
+        questionCategory: QuestionCategory,
+        player1Answer: String,
+        player2Answer: String
+    ) -> String {
+        var template = templateProvider.template(for: .cardAnalysis)
+        
+        // Optimize answer lengths for context window
+        let optimizedPlayer1 = optimizeAnswerForContext(player1Answer)
+        let optimizedPlayer2 = optimizeAnswerForContext(player2Answer)
+        
+        // Substitute variables
+        template = template.replacingOccurrences(of: "{{question}}", with: question.truncated(to: 100))
+        template = template.replacingOccurrences(of: "{{player1_answer}}", with: optimizedPlayer1)
+        template = template.replacingOccurrences(of: "{{player2_answer}}", with: optimizedPlayer2)
+        template = template.replacingOccurrences(of: "{{question_category}}", with: questionCategory.displayName)
+        
+        return cleanupTemplate(template)
+    }
+    
+    /// Processes template for synthesis analysis with card summaries (Stage 2)
+    public func processSynthesisTemplate(cardSummaries: [CardAnalysisSummary]) -> String {
+        var template = templateProvider.template(for: .synthesis)
+        
+        // Create compact representations of all card summaries
+        let summariesText = cardSummaries.enumerated().map { index, summary in
+            "Card \(index + 1): \(summary.compactRepresentation)"
+        }.joined(separator: "\n\n")
+        
+        // Substitute the summaries
+        template = template.replacingOccurrences(of: "{{card_summaries}}", with: summariesText)
+        
+        return cleanupTemplate(template)
+    }
+    
+    /// Optimizes answer text for context window constraints
+    private func optimizeAnswerForContext(_ answer: String, maxLength: Int = 200) -> String {
+        if answer.count <= maxLength {
+            return answer
+        }
+        
+        // Try to truncate at sentence boundaries
+        let sentences = answer.components(separatedBy: ". ")
+        var result = ""
+        
+        for sentence in sentences {
+            let potential = result.isEmpty ? sentence : "\(result). \(sentence)"
+            if potential.count <= maxLength - 3 {
+                result = potential
+            } else {
+                break
+            }
+        }
+        
+        // If no sentences fit, truncate at word boundaries
+        if result.isEmpty {
+            let words = answer.components(separatedBy: " ")
+            for word in words {
+                let potential = result.isEmpty ? word : "\(result) \(word)"
+                if potential.count <= maxLength - 3 {
+                    result = potential
+                } else {
+                    break
+                }
+            }
+        }
+        
+        return result.isEmpty ? answer.truncated(to: maxLength) : "\(result)..."
     }
     
     
@@ -469,4 +474,6 @@ public struct CompatibilityPromptProcessor {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
+
+// MARK: - String Extension (imported from CardAnalysisSummary.swift)
 

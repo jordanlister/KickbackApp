@@ -17,6 +17,9 @@ struct ConversationCard: View {
     let cardIndex: Int
     let isExpanded: Bool
     
+    /// State for showing success indicator
+    @State private var showSuccessIndicator: Bool = false
+    
     /// Glass effect ID for smooth morphing transitions
     private var glassEffectID: String {
         return "glass_morph_\(cardIndex)_\(isExpanded ? "expanded" : "collapsed")"
@@ -58,18 +61,33 @@ struct ConversationCard: View {
     // MARK: - Body
     
     var body: some View {
-        cardMainContent
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(accessibilityLabel)
-            .accessibilityHint(accessibilityHint)
-            .accessibilityValue(accessibilityValue)
-            .accessibilityAddTraits(accessibilityTraits)
-            .accessibilityAction(.default) {
-                // Default tap action for accessibility
+        ZStack {
+            cardMainContent
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(accessibilityLabel)
+                .accessibilityHint(accessibilityHint)
+                .accessibilityValue(accessibilityValue)
+                .accessibilityAddTraits(accessibilityTraits)
+                .accessibilityAction(.default) {
+                    // Default tap action for accessibility
+                }
+                .accessibilityScrollAction { edge in
+                    // Handle scroll actions for accessibility
+                }
+            
+            // Success indicator overlay
+            if showSuccessIndicator {
+                QuestionCompletionSuccessIndicator {
+                    showSuccessIndicator = false
+                }
+                .zIndex(10)
             }
-            .accessibilityScrollAction { edge in
-                // Handle scroll actions for accessibility
+        }
+        .onChange(of: viewModel.isCardComplete) { _, newValue in
+            if newValue && !showSuccessIndicator {
+                showSuccessIndicator = true
             }
+        }
     }
     
     private var cardMainContent: some View {
@@ -262,12 +280,13 @@ struct ConversationCard: View {
                 .opacity(0.5)
             
             HStack {
-                // Glass voice input button
-                Button(action: {
-                    Task {
-                        await handleVoiceInput()
-                    }
-                }) {
+                // Glass voice input button - only show if it's this player's turn
+                if canCurrentPlayerRecord {
+                    Button(action: {
+                        Task {
+                            await handleVoiceInput()
+                        }
+                    }) {
                     HStack(spacing: isExpanded ? 10 : 6) {
                         if viewModel.isVoiceInputMode {
                             VoiceRecordingIndicator.compact(
@@ -292,8 +311,28 @@ struct ConversationCard: View {
                         tint: (viewModel.isVoiceInputMode ? Color.red : categoryColor).opacity(0.1)
                     )
                     .interactive()
+                    }
+                    // Remove the disabled state since permissions are handled in onboarding
+                } else {
+                    // Show waiting state when it's not this player's turn
+                    HStack(spacing: isExpanded ? 10 : 6) {
+                        Image(systemName: "clock.circle.fill")
+                            .font(isExpanded ? .title : .title2)
+                            .foregroundColor(.secondary)
+                        
+                        Text(getWaitingStateText())
+                            .font(isExpanded ? .body : .subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, isExpanded ? 16 : 12)
+                    .padding(.vertical, isExpanded ? 12 : 8)
+                    .glassEffect(
+                        style: .regular,
+                        tint: Color.secondary.opacity(0.1)
+                    )
+                    .interactive()
                 }
-                // Remove the disabled state since permissions are handled in onboarding
                 
                 Spacer()
                 
@@ -356,7 +395,10 @@ struct ConversationCard: View {
                 glassLiveTranscriptionPreview
             }
             
-            // No longer show permission prompt since permissions are granted in onboarding
+            // Show recorded answers
+            if let answers = viewModel.cardAnswers {
+                recordedAnswersSection(answers)
+            }
             
             // Error display with glass effects
             if let error = viewModel.audioTranscriber.currentError {
@@ -448,6 +490,70 @@ struct ConversationCard: View {
         .interactive()
     }
     
+    /// Shows recorded answers from both players
+    @ViewBuilder
+    private func recordedAnswersSection(_ answers: CardAnswers) -> some View {
+        VStack(spacing: 12) {
+            if answers.hasAnyAnswers {
+                // Divider
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .frame(height: 1)
+                    .glassEffect(
+                        style: .regular,
+                        tint: categoryColor.opacity(0.2)
+                    )
+                    .opacity(0.5)
+                
+                VStack(spacing: 8) {
+                    Text("Answers")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    // Player answers with actual names
+                    ForEach(answers.allAnswers, id: \.id) { answer in
+                        playerAnswerView(answer: answer, playerName: getPlayerName(for: answer.playerNumber))
+                    }
+                }
+            }
+        }
+        .transition(.opacity.combined(with: .move(edge: .top)))
+    }
+    
+    /// Individual player answer display
+    @ViewBuilder
+    private func playerAnswerView(answer: PlayerAnswer, playerName: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(playerName)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(categoryColor)
+                
+                Spacer()
+                
+                Text(answer.formattedDuration)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            
+            Text(answer.answerText)
+                .font(.subheadline)
+                .foregroundColor(.primary)
+                .multilineTextAlignment(.leading)
+                .lineLimit(nil)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .glassEffect(
+            style: .regular,
+            tint: categoryColor.opacity(0.05)
+        )
+        .interactive()
+    }
+    
     /// Error display for transcription issues with glass effects
     @ViewBuilder
     private func glassErrorDisplay(_ error: AudioTranscriberError) -> some View {
@@ -504,6 +610,25 @@ struct ConversationCard: View {
     }
     
     // MARK: - Computed Properties
+    
+    /// Determines if the current player can record (based on turn and completion state)
+    private var canCurrentPlayerRecord: Bool {
+        guard let currentPlayer = viewModel.currentPlayer,
+              let answers = viewModel.cardAnswers else {
+            return false
+        }
+        
+        // Don't allow recording if card is complete
+        if answers.isComplete {
+            return false
+        }
+        
+        // Check if this player has already answered
+        let hasAnswered = (currentPlayer.playerNumber == 1 && answers.player1Answer != nil) ||
+                         (currentPlayer.playerNumber == 2 && answers.player2Answer != nil)
+        
+        return !hasAnswered
+    }
     
     /// Dynamic glass background based on category and state
     private var glassBackgroundMaterial: Material {
@@ -615,6 +740,26 @@ struct ConversationCard: View {
             // Haptic feedback for confirmation
             let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
             impactFeedback.impactOccurred()
+        }
+    }
+    
+    /// Gets the player name for display
+    private func getPlayerName(for playerNumber: Int) -> String {
+        return "Player \(playerNumber)"
+    }
+    
+    /// Gets appropriate waiting state text based on game state
+    private func getWaitingStateText() -> String {
+        guard let answers = viewModel.cardAnswers else {
+            return "Waiting..."
+        }
+        
+        if answers.isComplete {
+            return "Both players answered"
+        } else if let currentPlayer = viewModel.currentPlayer {
+            return "Waiting for \(currentPlayer.displayName)"
+        } else {
+            return "Waiting for next player"
         }
     }
 }

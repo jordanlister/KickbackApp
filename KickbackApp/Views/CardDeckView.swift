@@ -255,6 +255,17 @@ struct CardDeckView: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
             
+            // Game progress indicator
+            if mainViewModel.showCards && mainViewModel.gameplayIntegration.isTurnBasedModeEnabled {
+                GameProgressIndicator(
+                    questionsAnswered: mainViewModel.completedCardAnswers.count,
+                    totalQuestions: mainViewModel.getRequiredQuestionsForGameMode()
+                )
+                .padding(.horizontal, 20)
+                .padding(.top, refreshOffset > 10 ? 8 : 16)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+            
             Spacer()
             
             // Expanded card area or empty state
@@ -625,6 +636,11 @@ struct CardDeckView: View {
             try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
             
             await MainActor.run {
+                // Store the completed answers before resetting
+                if let cardAnswers = completedCard.cardAnswers, cardAnswers.isComplete {
+                    mainViewModel.storeCompletedCardAnswers(cardAnswers)
+                }
+                
                 // Reset the completed card and generate new question
                 completedCard.isCompletingCard = false
                 completedCard.reset()
@@ -679,16 +695,10 @@ struct CardDeckView: View {
         
         // Find which player hasn't answered yet
         if let answers = cardViewModel.cardAnswers {
-            print("Player switching: Player1 answered? \(answers.player1Answer != nil), Player2 answered? \(answers.player2Answer != nil)")
-            
             if answers.player1Answer == nil {
-                print("Setting current player to Player 1: \(players[0].displayName)")
                 cardViewModel.setCurrentPlayer(players[0]) // Player 1
             } else if answers.player2Answer == nil {
-                print("Setting current player to Player 2: \(players[1].displayName)")
                 cardViewModel.setCurrentPlayer(players[1]) // Player 2
-            } else {
-                print("Both players have answered - should trigger completion")
             }
         }
         
