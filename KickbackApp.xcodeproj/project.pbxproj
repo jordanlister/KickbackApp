@@ -407,6 +407,8 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Kickback uses your microphone to record your spoken answers to conversation questions. These recordings are transcribed on-device and analyzed locally to provide personalized compatibility insights with your partner. Your voice data never leaves your device.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Kickback uses speech recognition to convert your spoken answers into text for compatibility analysis. All speech processing happens on your device for privacy.";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -444,6 +446,8 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Kickback uses your microphone to record your spoken answers to conversation questions. These recordings are transcribed on-device and analyzed locally to provide personalized compatibility insights with your partner. Your voice data never leaves your device.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Kickback uses speech recognition to convert your spoken answers into text for compatibility analysis. All speech processing happens on your device for privacy.";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
