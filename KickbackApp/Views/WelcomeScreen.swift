@@ -16,6 +16,9 @@ struct WelcomeScreen: View {
     /// Whether the screen is currently visible
     let isVisible: Bool
     
+    /// Action to perform when Next button is tapped
+    let onNext: () -> Void
+    
     /// Animation state properties
     @State private var logoScale: CGFloat = 0.8
     @State private var logoOpacity: Double = 0.0
@@ -50,6 +53,26 @@ struct WelcomeScreen: View {
                 .padding(.horizontal, 40)
                 
                 Spacer()
+                
+                // Next button
+                Button(action: onNext) {
+                    HStack(spacing: 8) {
+                        Text("Next")
+                            .font(.system(size: 16, weight: .semibold))
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 16, weight: .medium))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(
+                        Capsule()
+                            .fill(Color("BrandPurple"))
+                    )
+                }
+                .padding(.bottom, 50)
+                
                 Spacer() // Extra spacer for better balance
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -242,7 +265,7 @@ struct WelcomeScreen: View {
         )
         .ignoresSafeArea()
         
-        WelcomeScreen(isVisible: true)
+        WelcomeScreen(isVisible: true, onNext: {})
     }
     .preferredColorScheme(.light)
 }
@@ -261,7 +284,7 @@ struct WelcomeScreen: View {
         )
         .ignoresSafeArea()
         
-        WelcomeScreen(isVisible: false)
+        WelcomeScreen(isVisible: false, onNext: {})
     }
     .preferredColorScheme(.light)
 }
@@ -284,7 +307,7 @@ struct WelcomeScreen: View {
                 )
                 .ignoresSafeArea()
                 
-                WelcomeScreen(isVisible: isVisible)
+                WelcomeScreen(isVisible: isVisible, onNext: {})
                 
                 // Control button for preview
                 VStack {

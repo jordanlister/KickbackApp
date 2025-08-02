@@ -97,6 +97,9 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
             mainViewModel.handleAppBackgrounding()
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ResetOnboarding"))) { _ in
+            mainViewModel.checkOnboardingStatus()
+        }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
             mainViewModel.handleAppForegrounding()
         }

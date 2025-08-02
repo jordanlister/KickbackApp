@@ -121,14 +121,20 @@ struct NavigationMenuView: View {
         
         selectedSection = section
         
-        // Add delay for visual feedback before navigation
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                isPresented = false
+        // Handle navigation based on section
+        if section == .development {
+            // For development tools, show overlay immediately without closing menu
+            showingSpecialView = .development
+        } else {
+            // Add delay for visual feedback before navigation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                    isPresented = false
+                }
+                
+                // Handle navigation based on section
+                handleNavigation(to: section)
             }
-            
-            // Handle navigation based on section
-            handleNavigation(to: section)
         }
     }
     
@@ -179,6 +185,10 @@ struct NavigationMenuView: View {
                     mainViewModel.showLaunchAnimation = false
                 }
             }
+            
+        case .development:
+            // Development tools are handled in handleSectionTap
+            break
         }
     }
 }
@@ -241,6 +251,7 @@ enum NavigationSection: CaseIterable {
     case voiceInput
     case voiceRecording
     case launchAnimation
+    case development
     
     var title: String {
         switch self {
@@ -258,6 +269,8 @@ enum NavigationSection: CaseIterable {
             return "Voice Recording"
         case .launchAnimation:
             return "Launch Screen"
+        case .development:
+            return "Development"
         }
     }
     
@@ -277,6 +290,8 @@ enum NavigationSection: CaseIterable {
             return "Voice recording indicator"
         case .launchAnimation:
             return "App startup sequence"
+        case .development:
+            return "Reset onboarding & dev tools"
         }
     }
     
@@ -296,6 +311,8 @@ enum NavigationSection: CaseIterable {
             return "waveform"
         case .launchAnimation:
             return "sparkles"
+        case .development:
+            return "wrench.and.screwdriver"
         }
     }
 }
@@ -340,17 +357,8 @@ struct SpecialViewOverlay: View {
                 // View content based on type
                 Group {
                     switch viewType {
-                    case .compatibilityResults:
-                        CompatibilityResultView(viewModel: CompatibilityViewModel())
-                    case .compatibilityInsights:
-                        CompatibilityInsightsView(
-                            insights: [],
-                            viewModel: CompatibilityViewModel()
-                        )
-                    case .voiceInput:
-                        VoiceInputView(viewModel: CardViewModel.preview())
-                    case .voiceRecording:
-                        VoiceRecordingIndicator(audioLevel: 0.5, isRecording: true)
+                    case .development:
+                        DevelopmentToolsView(isPresented: $isPresented)
                     default:
                         PlaceholderView(title: viewType.title, subtitle: viewType.subtitle)
                     }
@@ -387,6 +395,104 @@ struct PlaceholderView: View {
                 .multilineTextAlignment(.center)
         }
         .padding(40)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                )
+        )
+        .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+    }
+}
+
+// MARK: - Development Tools View
+
+struct DevelopmentToolsView: View {
+    @Binding var isPresented: Bool
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            // Header
+            VStack(spacing: 8) {
+                Image(systemName: "wrench.and.screwdriver")
+                    .font(.system(size: 40))
+                    .foregroundColor(Color("BrandPurple"))
+                
+                Text("Development Tools")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                
+                Text("Reset app state for testing")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            
+            // Development actions
+            VStack(spacing: 16) {
+                // Reset Onboarding
+                Button(action: {
+                    UserDefaults.standard.removeObject(forKey: "KickbackOnboardingCompleted")
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        isPresented = false
+                    }
+                    
+                    // Brief delay to allow menu to close, then trigger onboarding
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        // This will trigger the main view to re-check onboarding status
+                        NotificationCenter.default.post(name: NSNotification.Name("ResetOnboarding"), object: nil)
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: "arrow.clockwise")
+                        Text("Reset Onboarding")
+                        Spacer()
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color("BrandPurple").opacity(0.1))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color("BrandPurple").opacity(0.3), lineWidth: 1)
+                            )
+                    )
+                }
+                .foregroundColor(Color("BrandPurple"))
+                
+                // Clear UserDefaults
+                Button(action: {
+                    UserDefaults.standard.removePersistentDomain(forName: Bundle.main.bundleIdentifier!)
+                    UserDefaults.standard.synchronize()
+                    
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        isPresented = false
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: "trash")
+                        Text("Clear All Data")
+                        Spacer()
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.red.opacity(0.1))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.red.opacity(0.3), lineWidth: 1)
+                            )
+                    )
+                }
+                .foregroundColor(.red)
+            }
+            
+            Spacer()
+        }
+        .padding(32)
         .background(
             RoundedRectangle(cornerRadius: 20)
                 .fill(.ultraThinMaterial)

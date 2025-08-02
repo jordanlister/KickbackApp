@@ -40,13 +40,6 @@ struct OnboardingView: View {
                     
                     // Main content area with page transitions
                     pageContentArea(geometry: geometry)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    
-                    // Bottom navigation area
-                    bottomNavigationArea
-                        .frame(height: 120)
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, geometry.safeAreaInsets.bottom > 0 ? 0 : 20)
                 }
             }
         }
@@ -169,10 +162,20 @@ struct OnboardingView: View {
         
         switch page {
         case .welcome:
-            WelcomeScreen(isVisible: isCurrentPage)
+            WelcomeScreen(isVisible: isCurrentPage, onNext: {
+                viewModel.nextPage()
+            })
             
         case .howItWorks:
-            HowItWorksScreen(isVisible: isCurrentPage)
+            HowItWorksScreen(
+                isVisible: isCurrentPage,
+                onPrevious: {
+                    viewModel.previousPage()
+                },
+                onNext: {
+                    viewModel.nextPage()
+                }
+            )
             
         case .microphonePermission:
             MicrophonePermissionScreen(
@@ -182,6 +185,12 @@ struct OnboardingView: View {
                 permissionError: viewModel.permissionError,
                 onRequestPermission: {
                     await viewModel.requestMicrophonePermission()
+                },
+                onPrevious: {
+                    viewModel.previousPage()
+                },
+                onComplete: {
+                    viewModel.completeOnboarding()
                 }
             )
         }
@@ -190,7 +199,16 @@ struct OnboardingView: View {
     /// Bottom navigation with next/previous buttons
     @ViewBuilder
     private var bottomNavigationArea: some View {
-        HStack {
+        VStack {
+            // Debug test button - remove after fixing
+            Button("TEST BUTTON") {
+                print("Test button tapped")
+            }
+            .padding()
+            .background(Color.red)
+            .foregroundColor(.white)
+            
+            HStack {
             // Previous button (left side)
             if viewModel.currentPage > 0 {
                 Button(action: {
@@ -272,8 +290,9 @@ struct OnboardingView: View {
             .animation(.easeInOut(duration: 0.2), value: canProceed)
             .accessibilityLabel(buttonText)
             .accessibilityHint(buttonAccessibilityHint)
+            }
+            .padding(.vertical, 20)
         }
-        .padding(.vertical, 20)
     }
     
     // MARK: - Computed Properties

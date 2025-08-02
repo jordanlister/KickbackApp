@@ -16,6 +16,12 @@ struct HowItWorksScreen: View {
     /// Whether the screen is currently visible
     let isVisible: Bool
     
+    /// Action to perform when Previous button is tapped
+    let onPrevious: () -> Void
+    
+    /// Action to perform when Next button is tapped
+    let onNext: () -> Void
+    
     /// Animation state properties for staggered reveals
     @State private var titleOffset: CGFloat = 30
     @State private var titleOpacity: Double = 0.0
@@ -78,6 +84,52 @@ struct HowItWorksScreen: View {
                     // Steps section
                     stepsSection
                         .padding(.horizontal, 20)
+                    
+                    // Navigation buttons
+                    HStack {
+                        // Previous button
+                        Button(action: onPrevious) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 16, weight: .medium))
+                                Text("Previous")
+                                    .font(.system(size: 16, weight: .medium))
+                            }
+                            .foregroundColor(Color("BrandPurple"))
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(
+                                Capsule()
+                                    .fill(.ultraThinMaterial)
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(Color("BrandPurple").opacity(0.3), lineWidth: 1)
+                                    )
+                            )
+                        }
+                        
+                        Spacer()
+                        
+                        // Next button
+                        Button(action: onNext) {
+                            HStack(spacing: 8) {
+                                Text("Next")
+                                    .font(.system(size: 16, weight: .semibold))
+                                
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 16, weight: .medium))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 12)
+                            .background(
+                                Capsule()
+                                    .fill(Color("BrandPurple"))
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 20)
                     
                     // Bottom spacing
                     Spacer(minLength: 20)
@@ -345,7 +397,7 @@ private struct WorkflowStep {
         )
         .ignoresSafeArea()
         
-        HowItWorksScreen(isVisible: true)
+        HowItWorksScreen(isVisible: true, onPrevious: {}, onNext: {})
     }
     .preferredColorScheme(.light)
 }
@@ -364,7 +416,7 @@ private struct WorkflowStep {
         )
         .ignoresSafeArea()
         
-        HowItWorksScreen(isVisible: false)
+        HowItWorksScreen(isVisible: false, onPrevious: {}, onNext: {})
     }
     .preferredColorScheme(.light)
 }
@@ -387,7 +439,7 @@ private struct WorkflowStep {
                 )
                 .ignoresSafeArea()
                 
-                HowItWorksScreen(isVisible: isVisible)
+                HowItWorksScreen(isVisible: isVisible, onPrevious: {}, onNext: {})
                 
                 // Control button for preview
                 VStack {

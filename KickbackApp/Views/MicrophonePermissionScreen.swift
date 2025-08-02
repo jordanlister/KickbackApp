@@ -29,6 +29,12 @@ struct MicrophonePermissionScreen: View {
     /// Callback for permission request
     let onRequestPermission: () async -> Void
     
+    /// Action to perform when Previous button is tapped
+    let onPrevious: () -> Void
+    
+    /// Action to perform when completing onboarding
+    let onComplete: () -> Void
+    
     /// Animation state properties
     @State private var titleOffset: CGFloat = 30
     @State private var titleOpacity: Double = 0.0
@@ -70,6 +76,55 @@ struct MicrophonePermissionScreen: View {
                 .padding(.horizontal, 40)
                 
                 Spacer()
+                
+                // Navigation buttons
+                HStack {
+                    // Previous button
+                    Button(action: onPrevious) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 16, weight: .medium))
+                            Text("Previous")
+                                .font(.system(size: 16, weight: .medium))
+                        }
+                        .foregroundColor(Color("BrandPurple"))
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .background(
+                            Capsule()
+                                .fill(.ultraThinMaterial)
+                                .overlay(
+                                    Capsule()
+                                        .stroke(Color("BrandPurple").opacity(0.3), lineWidth: 1)
+                                )
+                        )
+                    }
+                    
+                    Spacer()
+                    
+                    // Begin button (only show if permission is granted)
+                    if permissionStatus == .granted {
+                        Button(action: onComplete) {
+                            HStack(spacing: 8) {
+                                Text("Begin")
+                                    .font(.system(size: 16, weight: .semibold))
+                                
+                                Image(systemName: "arrow.right.circle.fill")
+                                    .font(.system(size: 16, weight: .medium))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 12)
+                            .background(
+                                Capsule()
+                                    .fill(Color("BrandPurple"))
+                            )
+                        }
+                    }
+                }
+                .padding(.horizontal, 40)
+                .padding(.bottom, 50)
+                
                 Spacer() // Extra spacer for better balance
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -490,7 +545,9 @@ struct MicrophonePermissionScreen: View {
             permissionStatus: AVAudioSession.RecordPermission.undetermined,
             isRequestingPermission: false,
             permissionError: nil,
-            onRequestPermission: {}
+            onRequestPermission: {},
+            onPrevious: {},
+            onComplete: {}
         )
     }
     .preferredColorScheme(.light)
@@ -515,7 +572,7 @@ struct MicrophonePermissionScreen: View {
             permissionStatus: AVAudioSession.RecordPermission.granted,
             isRequestingPermission: false,
             permissionError: nil,
-            onRequestPermission: {}
+            onRequestPermission: {}, onPrevious: {}, onComplete: {}
         )
     }
     .preferredColorScheme(.light)
@@ -540,7 +597,7 @@ struct MicrophonePermissionScreen: View {
             permissionStatus: AVAudioSession.RecordPermission.denied,
             isRequestingPermission: false,
             permissionError: "Microphone access was denied. Please enable it in Settings.",
-            onRequestPermission: {}
+            onRequestPermission: {}, onPrevious: {}, onComplete: {}
         )
     }
     .preferredColorScheme(.light)
@@ -565,7 +622,7 @@ struct MicrophonePermissionScreen: View {
             permissionStatus: AVAudioSession.RecordPermission.undetermined,
             isRequestingPermission: true,
             permissionError: nil,
-            onRequestPermission: {}
+            onRequestPermission: {}, onPrevious: {}, onComplete: {}
         )
     }
     .preferredColorScheme(.light)

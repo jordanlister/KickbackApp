@@ -308,16 +308,12 @@ public final class MainContentViewModel: ObservableObject {
     }
     
     /// Checks if onboarding should be shown based on UserDefaults
-    private func checkOnboardingStatus() {
+    func checkOnboardingStatus() {
         let hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "KickbackOnboardingCompleted")
         showOnboarding = !hasCompletedOnboarding
         
-        // If onboarding is not needed, we can show the launch animation immediately
-        if hasCompletedOnboarding {
-            showLaunchAnimation = true
-        } else {
-            showLaunchAnimation = false
-        }
+        // When resetting onboarding, ensure launch animation is off
+        showLaunchAnimation = false
     }
     
     /// Animates the launch progress with smooth transitions
