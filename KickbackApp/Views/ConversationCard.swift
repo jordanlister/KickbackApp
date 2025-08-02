@@ -24,7 +24,7 @@ struct ConversationCard: View {
     private let cornerRadius: CGFloat = 16
     
     /// Animation constants tuned for 60fps performance
-    private let flipDuration: Double = 0.6
+    private let flipDuration: Double = 0.8
     private let scaleFactor: CGFloat = 0.95
     
     // MARK: - Computed Properties
@@ -79,11 +79,6 @@ struct ConversationCard: View {
             .padding(cardPadding)
         }
         .frame(height: isExpanded ? expandedCardHeight : cardHeight)
-        .scaleEffect(viewModel.isFlipped ? 1.05 : 1.0)
-        .animation(
-            .spring(response: flipDuration, dampingFraction: 0.8, blendDuration: 0),
-            value: viewModel.isFlipped
-        )
     }
     
     // MARK: - Subviews

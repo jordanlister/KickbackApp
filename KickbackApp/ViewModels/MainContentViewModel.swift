@@ -24,6 +24,9 @@ public final class MainContentViewModel: ObservableObject {
     /// Currently selected card index (if any)
     @Published var selectedCardIndex: Int?
     
+    /// Tracks if animation is in progress to prevent rapid state changes
+    @Published var isAnimatingCardTransition: Bool = false
+    
     /// Global loading state for initial app setup
     @Published var isInitializing: Bool = true
     
@@ -90,7 +93,9 @@ public final class MainContentViewModel: ObservableObject {
     /// Selects a card and triggers flip animation with question loading
     /// - Parameter index: Index of the card to select
     func selectCard(at index: Int) {
-        guard index < cardViewModels.count else { return }
+        guard index < cardViewModels.count && !isAnimatingCardTransition else { return }
+        
+        isAnimatingCardTransition = true
         
         // Deselect other cards
         for (i, cardVM) in cardViewModels.enumerated() {
@@ -108,6 +113,14 @@ public final class MainContentViewModel: ObservableObject {
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
         
+        // Reset animation flag after transition completes
+        Task {
+            try? await Task.sleep(nanoseconds: 800_000_000) // Match animation duration
+            await MainActor.run {
+                isAnimatingCardTransition = false
+            }
+        }
+        
         // Load question after animation completes (delay to allow smooth transition)
         if cardVM.question.isEmpty || cardVM.question == "Tap to reveal question..." {
             // Set loading state immediately for UI feedback
@@ -123,11 +136,22 @@ public final class MainContentViewModel: ObservableObject {
     
     /// Deselects all cards and returns to deck view
     func deselectAllCards() {
+        guard !isAnimatingCardTransition else { return }
+        
+        isAnimatingCardTransition = true
         selectedCardIndex = nil
         
         for cardVM in cardViewModels {
             if cardVM.isFlipped {
                 cardVM.flipDown()
+            }
+        }
+        
+        // Reset animation flag after transition completes
+        Task {
+            try? await Task.sleep(nanoseconds: 800_000_000) // Match animation duration
+            await MainActor.run {
+                isAnimatingCardTransition = false
             }
         }
     }

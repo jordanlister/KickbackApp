@@ -32,8 +32,11 @@ struct CardDeckView: View {
     
     /// Animation constants for smooth 60fps performance
     private let cardFlipDuration: Double = 0.8
-    private let cardLayoutDuration: Double = 0.6
+    private let cardLayoutDuration: Double = 0.8
     private let refreshAnimationDuration: Double = 0.3
+    
+    /// Unified animation configuration for matched geometry effects
+    private let matchedGeometryAnimation: Animation = .spring(response: 0.8, dampingFraction: 0.85)
     
     // MARK: - Body
     
@@ -52,6 +55,7 @@ struct CardDeckView: View {
                     bottomCardDeck(geometry: geometry)
                 }
             }
+            .animation(matchedGeometryAnimation, value: mainViewModel.selectedCardIndex)
         }
         .gesture(refreshGesture)
         .onChange(of: dragOffset) { _, newValue in
@@ -122,10 +126,6 @@ struct CardDeckView: View {
                 )
                 .matchedGeometryEffect(id: "card_\(selectedIndex)", in: cardNamespace)
                 .frame(width: expandedCardWidth, height: expandedCardHeight)
-                .transition(.asymmetric(
-                    insertion: .opacity.combined(with: .move(edge: .bottom)),
-                    removal: .opacity.combined(with: .move(edge: .bottom))
-                ))
             } else if mainViewModel.cardViewModels.isEmpty {
                 // Empty state with koala mascot
                 emptyStateView
@@ -141,7 +141,6 @@ struct CardDeckView: View {
             }
         }
         .frame(height: topHeight)
-        .animation(.spring(response: cardLayoutDuration, dampingFraction: 0.8), value: mainViewModel.selectedCardIndex)
     }
     
     /// Bottom 1/3 horizontal card deck
@@ -162,12 +161,6 @@ struct CardDeckView: View {
                     .onTapGesture {
                         handleCardTap(at: index)
                     }
-                    .scaleEffect(cardScale(at: index))
-                    .opacity(cardOpacity(at: index))
-                    .transition(.asymmetric(
-                        insertion: .scale.combined(with: .opacity),
-                        removal: .scale.combined(with: .opacity)
-                    ))
                 } else {
                     // Invisible placeholder to maintain layout
                     Rectangle()
@@ -178,7 +171,6 @@ struct CardDeckView: View {
         }
         .frame(height: bottomHeight)
         .padding(.horizontal, deckPadding)
-        .animation(.spring(response: cardLayoutDuration, dampingFraction: 0.8), value: mainViewModel.selectedCardIndex)
     }
     
     
@@ -223,7 +215,7 @@ struct CardDeckView: View {
     @ViewBuilder
     private var closeButton: some View {
         Button(action: {
-            mainViewModel.deselectAllCards()
+            handleCardClose()
         }) {
             HStack(spacing: 8) {
                 Image(systemName: "chevron.down")
@@ -299,15 +291,20 @@ struct CardDeckView: View {
         guard !isRefreshing else { return }
         
         if mainViewModel.selectedCardIndex == index {
-            // Tapping selected card deselects it with flip down animation
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                mainViewModel.deselectAllCards()
-            }
+            // Tapping selected card deselects it
+            handleCardClose()
         } else {
-            // Select the tapped card with horizontal flip up animation
-            withAnimation(.spring(response: 0.8, dampingFraction: 0.7)) {
+            // Select the tapped card with smooth matched geometry animation
+            withAnimation(matchedGeometryAnimation) {
                 mainViewModel.selectCard(at: index)
             }
+        }
+    }
+    
+    /// Handles card close with optimized animation
+    private func handleCardClose() {
+        withAnimation(matchedGeometryAnimation) {
+            mainViewModel.deselectAllCards()
         }
     }
     
