@@ -7,8 +7,8 @@
 
 import SwiftUI
 
-/// Modern card deck interface with horizontal 3-card layout in bottom third
-/// Features smooth flip animations with matched geometry and brand-consistent design
+/// Modern card deck interface with iOS 26 Liquid Glass design
+/// Features stunning glass morphism throughout with smooth flip animations
 struct CardDeckView: View {
     
     // MARK: - Properties
@@ -35,6 +35,10 @@ struct CardDeckView: View {
     private let cardLayoutDuration: Double = 0.8
     private let refreshAnimationDuration: Double = 0.3
     
+    /// Glass effect constants
+    private let glassCornerRadius: CGFloat = 20
+    private let glassBlurIntensity: CGFloat = 0.8
+    
     /// Unified animation configuration for matched geometry effects
     private let matchedGeometryAnimation: Animation = .spring(response: 0.8, dampingFraction: 0.85)
     
@@ -43,19 +47,34 @@ struct CardDeckView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Brand gradient background
-                brandBackgroundGradient
+                // Glass-compatible background gradient
+                glassCompatibleBackground
                     .ignoresSafeArea()
                 
-                VStack(spacing: 0) {
-                    // Top 2/3 area for expanded card or empty state
-                    topContentArea(geometry: geometry)
-                    
-                    // Bottom 1/3 area for horizontal card deck
-                    bottomCardDeck(geometry: geometry)
+                if mainViewModel.showModeSelection {
+                    // Mode selection interface - inline with smooth animations
+                    modeSelectionView(geometry: geometry)
+                } else {
+                    // Main card interface
+                    VStack(spacing: 0) {
+                        // Top 2/3 area for expanded card or empty state
+                        topContentArea(geometry: geometry)
+                        
+                        // Bottom 1/3 area with glass container for card deck
+                        if mainViewModel.showCards {
+                            GlassEffectContainer(glassEffectID: "card-deck-container") {
+                                bottomCardDeck(geometry: geometry)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.bottom, 20)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
+                    }
                 }
             }
             .animation(matchedGeometryAnimation, value: mainViewModel.selectedCardIndex)
+            .animation(.spring(response: 0.8, dampingFraction: 0.9), value: mainViewModel.showModeSelection)
+            .animation(.spring(response: 0.8, dampingFraction: 0.9), value: mainViewModel.showCards)
         }
         .gesture(refreshGesture)
         .onChange(of: dragOffset) { _, newValue in
@@ -73,30 +92,116 @@ struct CardDeckView: View {
     
     // MARK: - Subviews
     
-    /// Pull-to-refresh indicator
+    /// Mode selection view with liquid glass pill buttons
+    @ViewBuilder
+    private func modeSelectionView(geometry: GeometryProxy) -> some View {
+        VStack(spacing: 40) {
+            Spacer()
+            
+            // Mode selection pills with staggered animation
+            VStack(spacing: 20) {
+                ForEach(Array(ConversationMode.allCases.enumerated()), id: \.element) { index, mode in
+                    modePillButton(for: mode, animationDelay: Double(index) * 0.1)
+                }
+            }
+            
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    /// Individual mode pill button with liquid glass effects
+    @ViewBuilder
+    private func modePillButton(for mode: ConversationMode, animationDelay: Double) -> some View {
+        Button(action: {
+            handleModeSelection(mode)
+        }) {
+            HStack(spacing: 12) {
+                Image(systemName: mode.iconName)
+                    .font(.title2)
+                    .foregroundColor(mode.primaryColor)
+                
+                Text(mode.title)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 16)
+            .frame(minWidth: 200)
+            .glassEffect(
+                style: .prominent,
+                tint: mode.primaryColor.opacity(0.15)
+            )
+            .interactive()
+            .background(
+                Capsule()
+                    .fill(.ultraThinMaterial)
+                    .shadow(
+                        color: mode.primaryColor.opacity(0.3),
+                        radius: 8,
+                        x: 0,
+                        y: 4
+                    )
+            )
+            .overlay(
+                Capsule()
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                mode.primaryColor.opacity(0.4),
+                                mode.primaryColor.opacity(0.1)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            )
+            .scaleEffect(mainViewModel.showModeSelection ? 1.0 : 0.8)
+            .opacity(mainViewModel.showModeSelection ? 1.0 : 0.0)
+            .animation(
+                .spring(response: 0.6, dampingFraction: 0.8)
+                    .delay(animationDelay),
+                value: mainViewModel.showModeSelection
+            )
+        }
+        .accessibilityLabel("\(mode.title) mode")
+        .accessibilityHint(mode.description)
+        .accessibilityAddTraits(.isButton)
+    }
+    
+    /// Pull-to-refresh indicator with glass effects
     @ViewBuilder
     private var refreshIndicator: some View {
         HStack {
             if isRefreshing {
                 ProgressView()
                     .scaleEffect(0.8)
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    .progressViewStyle(CircularProgressViewStyle(tint: Color("BrandPurple")))
                 
                 Text("Refreshing cards...")
                     .font(.caption)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.primary)
             } else if refreshOffset > 20 {
                 Image(systemName: refreshOffset > refreshThreshold ? "arrow.clockwise.circle.fill" : "arrow.down.circle")
                     .font(.title2)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(Color("BrandPurple"))
                     .rotationEffect(.degrees(refreshOffset > refreshThreshold ? 180 : 0))
                     .animation(.easeInOut(duration: 0.2), value: refreshOffset > refreshThreshold)
                 
                 Text(refreshOffset > refreshThreshold ? "Release to refresh" : "Pull to refresh")
                     .font(.caption)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.secondary)
             }
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .glassEffect(
+            style: .regular,
+            tint: Color("BrandPurple").opacity(0.1)
+        )
+        .interactive()
         .frame(height: max(0, refreshOffset))
         .opacity(refreshOffset > 10 ? 1.0 : 0.0)
         .animation(.easeInOut(duration: 0.2), value: refreshOffset)
@@ -118,13 +223,14 @@ struct CardDeckView: View {
             
             // Expanded card area or empty state
             if let selectedIndex = mainViewModel.selectedCardIndex {
-                // Show expanded card
+                // Show expanded card with glass morphing
                 ConversationCard(
                     viewModel: mainViewModel.cardViewModels[selectedIndex],
                     cardIndex: selectedIndex,
                     isExpanded: true
                 )
                 .matchedGeometryEffect(id: "card_\(selectedIndex)", in: cardNamespace)
+                .matchedGeometryEffect(id: "glass_card_\(selectedIndex)", in: cardNamespace)
                 .frame(width: expandedCardWidth, height: expandedCardHeight)
             } else if mainViewModel.cardViewModels.isEmpty {
                 // Empty state with koala mascot
@@ -134,16 +240,16 @@ struct CardDeckView: View {
             
             Spacer()
             
-            // Close button when card is expanded
+            // Close button when card is expanded - with glass effect
             if mainViewModel.selectedCardIndex != nil {
-                closeButton
+                glassCloseButton
                     .transition(.scale.combined(with: .opacity))
             }
         }
         .frame(height: topHeight)
     }
     
-    /// Bottom 1/3 horizontal card deck
+    /// Bottom 1/3 horizontal card deck with glass morphism
     @ViewBuilder
     private func bottomCardDeck(geometry: GeometryProxy) -> some View {
         let bottomHeight = geometry.size.height * 0.33
@@ -157,6 +263,7 @@ struct CardDeckView: View {
                         isBack: true
                     )
                     .matchedGeometryEffect(id: "card_\(index)", in: cardNamespace)
+                    .matchedGeometryEffect(id: "glass_card_\(index)", in: cardNamespace)
                     .frame(width: cardWidth, height: cardHeight)
                     .onTapGesture {
                         handleCardTap(at: index)
@@ -176,19 +283,20 @@ struct CardDeckView: View {
     
     // MARK: - Computed Properties
     
-    /// Brand-consistent background gradient using brand colors
-    private var brandBackgroundGradient: LinearGradient {
+    /// Glass-compatible background gradient optimized for glass effects
+    private var glassCompatibleBackground: LinearGradient {
         LinearGradient(
             gradient: Gradient(colors: [
-                Color("BrandPurple"),
-                Color("BrandPurpleLight")
+                Color("BrandPurple").opacity(0.4),
+                Color("BrandPurpleLight").opacity(0.3),
+                Color.clear.opacity(0.1)
             ]),
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
     }
     
-    /// Empty state view with koala mascot
+    /// Empty state view with glass morphism and koala mascot
     @ViewBuilder
     private var emptyStateView: some View {
         VStack(spacing: 20) {
@@ -196,24 +304,38 @@ struct CardDeckView: View {
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 120, height: 120)
-                .foregroundColor(.white.opacity(0.8))
+                .foregroundColor(Color("BrandPurple"))
+                .glassEffect(
+                    style: .prominent,
+                    tint: Color("BrandPurple").opacity(0.1)
+                )
+                .interactive()
             
-            Text("No cards available")
-                .font(.title2)
-                .fontWeight(.medium)
-                .foregroundColor(.white.opacity(0.9))
-            
-            Text("Pull down to refresh and get new conversation starters")
-                .font(.subheadline)
-                .foregroundColor(.white.opacity(0.7))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
+            VStack(spacing: 12) {
+                Text("No cards available")
+                    .font(.title2)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                
+                Text("Pull down to refresh and get new conversation starters")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 16)
+            .glassEffect(
+                style: .regular,
+                tint: Color("BrandPurple").opacity(0.05)
+            )
+            .interactive()
         }
+        .padding(.horizontal, 40)
     }
     
-    /// Close button for expanded card
+    /// Glass close button for expanded card
     @ViewBuilder
-    private var closeButton: some View {
+    private var glassCloseButton: some View {
         Button(action: {
             handleCardClose()
         }) {
@@ -224,12 +346,18 @@ struct CardDeckView: View {
                     .font(.subheadline)
                     .fontWeight(.medium)
             }
-            .foregroundColor(.white.opacity(0.9))
+            .foregroundColor(.primary)
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
+            .glassEffect(
+                style: .regular,
+                tint: Color("BrandPurple").opacity(0.1)
+            )
+            .interactive()
             .background(
                 Capsule()
                     .fill(.ultraThinMaterial)
+                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
             )
         }
         .padding(.bottom, 20)
@@ -328,6 +456,16 @@ struct CardDeckView: View {
             }
         }
     }
+    
+    /// Handles mode selection with smooth animation flow
+    private func handleModeSelection(_ mode: ConversationMode) {
+        // Haptic feedback for mode selection
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        
+        // Trigger the mode selection in the view model
+        mainViewModel.selectMode(mode)
+    }
 }
 
 // MARK: - Supporting Views
@@ -356,25 +494,30 @@ private extension Array {
 
 // MARK: - Preview Support
 
-#Preview("Modern Kickback Deck - Default") {
-    CardDeckView(mainViewModel: MainContentViewModel.mock())
+#Preview("Mode Selection Interface") {
+    CardDeckView(mainViewModel: MainContentViewModel.mock(showModeSelection: true, showCards: false))
         .preferredColorScheme(.light)
 }
 
-#Preview("Modern Kickback Deck - Expanded Card") {
-    CardDeckView(mainViewModel: MainContentViewModel.mock(selectedCardIndex: 1))
+#Preview("Card Deck - Default") {
+    CardDeckView(mainViewModel: MainContentViewModel.mock(showModeSelection: false, showCards: true))
         .preferredColorScheme(.light)
 }
 
-#Preview("Modern Kickback Deck - Empty State") {
-    let emptyViewModel = MainContentViewModel.mock()
+#Preview("Card Deck - Expanded Card") {
+    CardDeckView(mainViewModel: MainContentViewModel.mock(selectedCardIndex: 1, showModeSelection: false, showCards: true))
+        .preferredColorScheme(.light)
+}
+
+#Preview("Card Deck - Empty State") {
+    let emptyViewModel = MainContentViewModel.mock(showModeSelection: false, showCards: true)
     emptyViewModel.cardViewModels = []
     return CardDeckView(mainViewModel: emptyViewModel)
         .preferredColorScheme(.light)
 }
 
-#Preview("Complete Modern Interface") {
-    CardDeckView(mainViewModel: MainContentViewModel.mock())
+#Preview("Complete Interface Flow") {
+    CardDeckView(mainViewModel: MainContentViewModel.mock(showModeSelection: false, showCards: true))
         .preferredColorScheme(.light)
         .statusBarHidden()
 }

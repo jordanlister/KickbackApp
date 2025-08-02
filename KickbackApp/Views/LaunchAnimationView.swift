@@ -144,20 +144,22 @@ struct LaunchAnimationView: View {
     
     // MARK: - Computed Properties
     
-    /// Dynamic background gradient that shifts during launch
+    /// Glass-compatible background gradient using brand colors
     private var launchBackgroundGradient: LinearGradient {
         let colors: [Color]
         
         if progress < 0.5 {
+            // Start with deeper brand colors
             colors = [
-                Color(red: 0.2, green: 0.3, blue: 0.8),
-                Color(red: 0.6, green: 0.2, blue: 0.8)
+                Color("BrandPurple"),
+                Color("BrandPurpleLight")
             ]
         } else {
+            // Transition to glass-compatible lighter tones
             colors = [
-                Color(red: 0.9, green: 0.6, blue: 0.7),
-                Color(red: 0.8, green: 0.5, blue: 0.9),
-                Color(red: 0.6, green: 0.7, blue: 0.9)
+                Color("BrandPurple").opacity(0.6),
+                Color("BrandPurpleLight").opacity(0.5),
+                Color.clear.opacity(0.2)
             ]
         }
         

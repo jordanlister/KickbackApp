@@ -27,6 +27,11 @@ public final class MainContentViewModel: ObservableObject {
     /// Tracks if animation is in progress to prevent rapid state changes
     @Published var isAnimatingCardTransition: Bool = false
     
+    /// Mode selection state management
+    @Published var selectedMode: ConversationMode? = nil
+    @Published var showModeSelection: Bool = true
+    @Published var showCards: Bool = false
+    
     /// Global loading state for initial app setup
     @Published var isInitializing: Bool = true
     
@@ -189,6 +194,29 @@ public final class MainContentViewModel: ObservableObject {
         // Could refresh cards if they're stale
     }
     
+    /// Handles mode selection with smooth animation transition
+    /// - Parameter mode: The selected conversation mode
+    func selectMode(_ mode: ConversationMode) {
+        selectedMode = mode
+        
+        // Animate mode pills away first
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+            showModeSelection = false
+        }
+        
+        // After pills disappear, slide cards up from bottom
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            withAnimation(.spring(response: 0.8, dampingFraction: 0.9)) {
+                self.showCards = true
+            }
+        }
+        
+        // Update cards with mode-specific categories
+        Task {
+            await updateCardsForMode(mode)
+        }
+    }
+    
     // MARK: - Private Methods
     
     /// Sets up initial app state
@@ -247,6 +275,28 @@ public final class MainContentViewModel: ObservableObject {
         
         return Array(categories.prefix(cardCount))
     }
+    
+    /// Updates cards with mode-specific categories
+    private func updateCardsForMode(_ mode: ConversationMode) async {
+        let modeCategories = mode.preferredCategories.shuffled()
+        
+        // Ensure we have enough categories for all cards
+        var finalCategories = modeCategories
+        while finalCategories.count < cardCount {
+            finalCategories.append(contentsOf: modeCategories)
+        }
+        
+        // Update cards with mode-specific categories
+        for (index, category) in finalCategories.prefix(cardCount).enumerated() {
+            guard index < cardViewModels.count else { break }
+            
+            await MainActor.run {
+                cardViewModels[index].category = category
+                cardViewModels[index].question = "Tap to reveal question..."
+                cardViewModels[index].isLoading = false
+            }
+        }
+    }
 }
 
 // MARK: - Preview Support
@@ -257,12 +307,16 @@ extension MainContentViewModel {
     static func mock(
         showLaunchAnimation: Bool = false,
         isInitializing: Bool = false,
-        selectedCardIndex: Int? = nil
+        selectedCardIndex: Int? = nil,
+        showModeSelection: Bool = false,
+        showCards: Bool = true
     ) -> MainContentViewModel {
         let viewModel = MainContentViewModel(questionEngine: MockQuestionEngine())
         viewModel.showLaunchAnimation = showLaunchAnimation
         viewModel.isInitializing = isInitializing
         viewModel.selectedCardIndex = selectedCardIndex
+        viewModel.showModeSelection = showModeSelection
+        viewModel.showCards = showCards
         viewModel.launchAnimationProgress = showLaunchAnimation ? 0.5 : 1.0
         
         // Setup mock cards

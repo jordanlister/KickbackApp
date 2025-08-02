@@ -7,8 +7,8 @@
 
 import SwiftUI
 
-/// Individual Kickback card component with brand-consistent design
-/// Shows card back with logo when not flipped, question preview when flipped
+/// Individual Kickback card with iOS 26 Liquid Glass design
+/// Features stunning glass morphism with logo and interactive effects
 struct KickbackCardView: View {
     
     // MARK: - Properties
@@ -17,31 +17,43 @@ struct KickbackCardView: View {
     let cardIndex: Int
     let isBack: Bool
     
-    /// Card styling constants
-    private let cornerRadius: CGFloat = 12
-    private let shadowRadius: CGFloat = 8
-    private let borderWidth: CGFloat = 1
+    /// Glass effect ID for smooth morphing transitions
+    private var glassEffectID: String {
+        return "glass_card_\(cardIndex)_\(isBack ? "back" : "front")"
+    }
+    
+    /// Glass card styling constants
+    private let glassCornerRadius: CGFloat = 20
+    private let glassShadowRadius: CGFloat = 12
+    private let glassBorderWidth: CGFloat = 1.5
+    private let glassBlurIntensity: CGFloat = 0.8
     
     // MARK: - Body
     
     var body: some View {
         ZStack {
-            // Card background with subtle gradient
-            cardBackground
+            // Glass card background with stunning morphism
+            glassCardBackground
             
-            // Card content based on flip state
+            // Glass card content based on flip state
             if isBack {
-                cardBackContent
+                glassCardBackContent
             } else {
-                cardFrontContent
+                glassCardFrontContent
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+        .clipShape(RoundedRectangle(cornerRadius: glassCornerRadius))
+        .glassEffect(
+            style: .prominent,
+            tint: categoryColor.opacity(0.1),
+            glassID: glassEffectID
+        )
+        .interactive()
         .shadow(
-            color: Color.black.opacity(0.15),
-            radius: shadowRadius,
+            color: categoryColor.opacity(0.2),
+            radius: glassShadowRadius,
             x: 0,
-            y: 4
+            y: 6
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
@@ -51,50 +63,73 @@ struct KickbackCardView: View {
     
     // MARK: - Subviews
     
-    /// Card background with brand-consistent styling
+    /// Glass card background with stunning morphism
     @ViewBuilder
-    private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: cornerRadius)
-            .fill(cardBackgroundGradient)
+    private var glassCardBackground: some View {
+        RoundedRectangle(cornerRadius: glassCornerRadius)
+            .fill(.ultraThinMaterial)
             .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius)
+                RoundedRectangle(cornerRadius: glassCornerRadius)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                categoryColor.opacity(0.15),
+                                categoryColor.opacity(0.05),
+                                Color.clear
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .blendMode(.overlay)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: glassCornerRadius)
                     .stroke(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.3),
-                                Color.white.opacity(0.1)
+                                .white.opacity(0.4),
+                                .white.opacity(0.2),
+                                .clear
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
-                        lineWidth: borderWidth
+                        lineWidth: glassBorderWidth
                     )
             )
     }
     
-    /// Card back content showing Kickback logo only
+    /// Glass card back content with stunning logo presentation
     @ViewBuilder
-    private var cardBackContent: some View {
+    private var glassCardBackContent: some View {
         VStack {
             Spacer()
             
-            // Kickback logo centered
+            // Kickback logo with glass effects
             Image("KickbackLogo")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 50, height: 50)
-                .foregroundColor(.white.opacity(0.9))
+                .foregroundColor(Color("BrandPurple"))
+                .glassEffect(
+                    style: .prominent,
+                    tint: Color("BrandPurple").opacity(0.1)
+                )
+                .interactive()
+                .scaleEffect(1.1)
+                .animation(.spring(response: 0.6, dampingFraction: 0.7).repeatForever(autoreverses: true), value: true)
             
             Spacer()
         }
-        .padding(12)
+        .padding(16)
     }
     
-    /// Card front content showing question preview
+    /// Glass card front content with stunning question preview
     @ViewBuilder
-    private var cardFrontContent: some View {
+    private var glassCardFrontContent: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Category header
+            // Category header with glass effects
             HStack {
                 Text(viewModel.category.displayName)
                     .font(.caption2)
@@ -102,6 +137,13 @@ struct KickbackCardView: View {
                     .foregroundColor(categoryColor)
                     .textCase(.uppercase)
                     .tracking(0.5)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .glassEffect(
+                        style: .regular,
+                        tint: categoryColor.opacity(0.1)
+                    )
+                    .interactive()
                 
                 Spacer()
                 
@@ -109,46 +151,59 @@ struct KickbackCardView: View {
                     ProgressView()
                         .scaleEffect(0.6)
                         .progressViewStyle(CircularProgressViewStyle(tint: categoryColor))
+                        .glassEffect(
+                            style: .regular,
+                            tint: categoryColor.opacity(0.05)
+                        )
+                        .interactive()
                 }
             }
             
             Spacer()
             
-            // Question preview (first few words)
+            // Question preview with glass effects
             if viewModel.isLoading {
-                loadingPlaceholder
+                glassLoadingPlaceholder
             } else if !viewModel.question.isEmpty {
-                questionPreview
+                glassQuestionPreview
             } else {
-                emptyQuestionState
+                glassEmptyQuestionState
             }
             
             Spacer()
         }
-        .padding(12)
+        .padding(16)
     }
     
-    /// Loading placeholder with animated shimmer effect
+    /// Glass loading placeholder with stunning shimmer effect
     @ViewBuilder
-    private var loadingPlaceholder: some View {
-        VStack(spacing: 4) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Color.white.opacity(0.3))
-                .frame(height: 8)
+    private var glassLoadingPlaceholder: some View {
+        VStack(spacing: 6) {
+            RoundedRectangle(cornerRadius: 6)
+                .fill(.ultraThinMaterial)
+                .frame(height: 10)
+                .glassEffect(
+                    style: .regular,
+                    tint: categoryColor.opacity(0.1)
+                )
                 .redacted(reason: .placeholder)
             
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Color.white.opacity(0.3))
-                .frame(height: 8)
+            RoundedRectangle(cornerRadius: 6)
+                .fill(.ultraThinMaterial)
+                .frame(height: 10)
                 .frame(width: .random(in: 40...70))
+                .glassEffect(
+                    style: .regular,
+                    tint: categoryColor.opacity(0.1)
+                )
                 .redacted(reason: .placeholder)
         }
         .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: viewModel.isLoading)
     }
     
-    /// Question preview showing first few words
+    /// Glass question preview with stunning typography
     @ViewBuilder
-    private var questionPreview: some View {
+    private var glassQuestionPreview: some View {
         let words = viewModel.question.components(separatedBy: " ")
         let previewWords = Array(words.prefix(6)).joined(separator: " ")
         let hasMore = words.count > 6
@@ -156,46 +211,48 @@ struct KickbackCardView: View {
         Text(previewWords + (hasMore ? "..." : ""))
             .font(.caption)
             .fontWeight(.medium)
-            .foregroundColor(.white.opacity(0.9))
+            .foregroundColor(.primary)
             .multilineTextAlignment(.leading)
             .lineLimit(3)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .glassEffect(
+                style: .regular,
+                tint: categoryColor.opacity(0.05)
+            )
+            .interactive()
     }
     
-    /// Empty question state
+    /// Glass empty question state with elegant styling
     @ViewBuilder
-    private var emptyQuestionState: some View {
+    private var glassEmptyQuestionState: some View {
         Text("Tap to reveal")
             .font(.caption)
             .fontWeight(.medium)
-            .foregroundColor(.white.opacity(0.6))
+            .foregroundColor(.secondary)
             .italic()
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .glassEffect(
+                style: .regular,
+                tint: categoryColor.opacity(0.05)
+            )
+            .interactive()
     }
     
     // MARK: - Computed Properties
     
-    /// Dynamic card background based on category and state
-    private var cardBackgroundGradient: LinearGradient {
+    /// Dynamic glass material based on category and state
+    private var glassMaterial: Material {
+        return isBack ? .ultraThinMaterial : .thinMaterial
+    }
+    
+    /// Dynamic glass tint color based on category and state
+    private var glassTintColor: Color {
         if isBack {
-            // Unified back design with brand colors
-            return LinearGradient(
-                gradient: Gradient(colors: [
-                    Color("BrandPurple").opacity(0.8),
-                    Color("BrandPurpleLight").opacity(0.9)
-                ]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            return Color("BrandPurple").opacity(0.1)
         } else {
-            // Category-specific front design
-            let baseColor = categoryColor
-            return LinearGradient(
-                gradient: Gradient(colors: [
-                    baseColor.opacity(0.7),
-                    baseColor.opacity(0.5)
-                ]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            return categoryColor.opacity(0.1)
         }
     }
     
@@ -243,6 +300,8 @@ struct KickbackCardView: View {
     }
 }
 
+// Glass effects are imported from GlassEffectExtensions.swift
+
 // MARK: - Preview Support
 
 #Preview("Card Back") {
@@ -257,7 +316,16 @@ struct KickbackCardView: View {
     )
     .frame(width: 100, height: 140)
     .padding()
-    .background(Color.gray.opacity(0.2))
+    .background(
+        LinearGradient(
+            gradient: Gradient(colors: [
+                Color("BrandPurple").opacity(0.3),
+                Color("BrandPurpleLight").opacity(0.2)
+            ]),
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    )
 }
 
 #Preview("Card Front") {
@@ -272,7 +340,16 @@ struct KickbackCardView: View {
     )
     .frame(width: 100, height: 140)
     .padding()
-    .background(Color.gray.opacity(0.2))
+    .background(
+        LinearGradient(
+            gradient: Gradient(colors: [
+                Color("BrandPurple").opacity(0.3),
+                Color("BrandPurpleLight").opacity(0.2)
+            ]),
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    )
 }
 
 #Preview("Loading State") {
@@ -288,7 +365,16 @@ struct KickbackCardView: View {
     )
     .frame(width: 100, height: 140)
     .padding()
-    .background(Color.gray.opacity(0.2))
+    .background(
+        LinearGradient(
+            gradient: Gradient(colors: [
+                Color("BrandPurple").opacity(0.3),
+                Color("BrandPurpleLight").opacity(0.2)
+            ]),
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    )
 }
 
 #Preview("All Cards Horizontal") {
@@ -325,8 +411,9 @@ struct KickbackCardView: View {
     .background(
         LinearGradient(
             gradient: Gradient(colors: [
-                Color("BrandPurple"),
-                Color("BrandPurpleLight")
+                Color("BrandPurple").opacity(0.4),
+                Color("BrandPurpleLight").opacity(0.3),
+                Color.clear.opacity(0.1)
             ]),
             startPoint: .topLeading,
             endPoint: .bottomTrailing

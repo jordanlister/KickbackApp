@@ -7,8 +7,8 @@
 
 import SwiftUI
 
-/// Individual conversation card with smooth flip animations and text reveal effects
-/// Designed for 60fps performance with optimized animations and minimal redraws
+/// Individual conversation card with iOS 26 Liquid Glass design
+/// Features stunning glass morphism with smooth flip animations and text reveal effects
 struct ConversationCard: View {
     
     // MARK: - Properties
@@ -17,11 +17,20 @@ struct ConversationCard: View {
     let cardIndex: Int
     let isExpanded: Bool
     
+    /// Glass effect ID for smooth morphing transitions
+    private var glassEffectID: String {
+        return "glass_morph_\(cardIndex)_\(isExpanded ? "expanded" : "collapsed")"
+    }
+    
     /// Card dimensions and layout constants
     private let cardHeight: CGFloat = 200
     private let expandedCardHeight: CGFloat = 320
     private let cardPadding: CGFloat = 20
-    private let cornerRadius: CGFloat = 16
+    private let cornerRadius: CGFloat = 24
+    
+    /// Glass effect constants
+    private let glassCornerRadius: CGFloat = 24
+    private let glassBlurIntensity: CGFloat = 0.8
     
     /// Animation constants tuned for 60fps performance
     private let flipDuration: Double = 0.8
@@ -30,10 +39,16 @@ struct ConversationCard: View {
     // MARK: - Computed Properties
     
     private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: cornerRadius)
-            .fill(cardBackgroundGradient)
+        RoundedRectangle(cornerRadius: glassCornerRadius)
+            .fill(.ultraThinMaterial)
+            .glassEffect(
+                style: viewModel.isFlipped ? .prominent : .regular,
+                tint: categoryColor.opacity(0.1),
+                glassID: glassEffectID
+            )
+            .interactive()
             .shadow(
-                color: Color.black.opacity(0.1),
+                color: categoryColor.opacity(viewModel.isFlipped ? 0.3 : 0.1),
                 radius: viewModel.isFlipped ? 20 : 8,
                 x: 0,
                 y: viewModel.isFlipped ? 10 : 4
@@ -61,17 +76,17 @@ struct ConversationCard: View {
         ZStack {
             cardBackground
             
-            // Card content
+            // Glass card content container
             VStack(spacing: 16) {
-                // Category indicator
+                // Category indicator with glass effect
                 categoryHeader
                 
-                // Question content area
+                // Question content area with glass morphism
                 questionContent
                 
                 // Voice input section when card is expanded
                 if isExpanded && !viewModel.isLoading && viewModel.errorMessage == nil {
-                    voiceInputSection
+                    glassVoiceInputSection
                 }
                 
                 Spacer(minLength: 0)
@@ -79,11 +94,12 @@ struct ConversationCard: View {
             .padding(cardPadding)
         }
         .frame(height: isExpanded ? expandedCardHeight : cardHeight)
+        .clipShape(RoundedRectangle(cornerRadius: glassCornerRadius))
     }
     
     // MARK: - Subviews
     
-    /// Category header with animated appearance
+    /// Category header with glass effects and animated appearance
     @ViewBuilder
     private var categoryHeader: some View {
         HStack {
@@ -93,6 +109,13 @@ struct ConversationCard: View {
                 .foregroundColor(categoryColor)
                 .textCase(.uppercase)
                 .tracking(0.5)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .glassEffect(
+                    style: .regular,
+                    tint: categoryColor.opacity(0.1)
+                )
+                .interactive()
             
             Spacer()
             
@@ -100,6 +123,11 @@ struct ConversationCard: View {
                 ProgressView()
                     .scaleEffect(0.7)
                     .progressViewStyle(CircularProgressViewStyle(tint: categoryColor))
+                    .glassEffect(
+                        style: .regular,
+                        tint: categoryColor.opacity(0.05)
+                    )
+                    .interactive()
             }
         }
         .opacity(isExpanded ? 1.0 : 0.8)
@@ -120,40 +148,62 @@ struct ConversationCard: View {
         }
     }
     
-    /// Loading state content
+    /// Loading state content with glass effects
     @ViewBuilder
     private var loadingContent: some View {
         VStack(spacing: 8) {
-            RoundedRectangle(cornerRadius: 4)
-                .fill(Color.gray.opacity(0.3))
+            RoundedRectangle(cornerRadius: 8)
+                .fill(.ultraThinMaterial)
                 .frame(height: 16)
+                .glassEffect(
+                    style: .regular,
+                    tint: categoryColor.opacity(0.1)
+                )
                 .redacted(reason: .placeholder)
             
-            RoundedRectangle(cornerRadius: 4)
-                .fill(Color.gray.opacity(0.3))
+            RoundedRectangle(cornerRadius: 8)
+                .fill(.ultraThinMaterial)
                 .frame(height: 16)
                 .frame(width: .random(in: 120...200))
+                .glassEffect(
+                    style: .regular,
+                    tint: categoryColor.opacity(0.1)
+                )
                 .redacted(reason: .placeholder)
         }
         .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: viewModel.isLoading)
     }
     
-    /// Error state content
+    /// Error state content with glass effects
     @ViewBuilder
     private func errorContent(_ error: String) -> some View {
         VStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.title2)
                 .foregroundColor(.orange)
+                .glassEffect(
+                    style: .regular,
+                    tint: Color.orange.opacity(0.1)
+                )
+                .interactive()
             
-            Text("Unable to load question")
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .foregroundColor(.primary)
-            
-            Text("Tap to try again")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            VStack(spacing: 4) {
+                Text("Unable to load question")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                
+                Text("Tap to try again")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .glassEffect(
+                style: .regular,
+                tint: Color.orange.opacity(0.05)
+            )
+            .interactive()
         }
         .multilineTextAlignment(.center)
     }
@@ -172,15 +222,22 @@ struct ConversationCard: View {
             .animation(.easeIn(duration: 0.2), value: viewModel.displayedQuestion.isEmpty)
     }
     
-    /// Voice input section for answering questions
+    /// Glass voice input section for answering questions
     @ViewBuilder
-    private var voiceInputSection: some View {
+    private var glassVoiceInputSection: some View {
         VStack(spacing: 12) {
-            Divider()
+            // Glass divider
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .frame(height: 1)
+                .glassEffect(
+                    style: .regular,
+                    tint: categoryColor.opacity(0.2)
+                )
                 .opacity(0.5)
             
             HStack {
-                // Voice input button
+                // Glass voice input button
                 Button(action: {
                     Task {
                         await viewModel.toggleVoiceInput()
@@ -195,55 +252,74 @@ struct ConversationCard: View {
                         } else {
                             Image(systemName: "mic.circle.fill")
                                 .font(.title2)
-                                .foregroundColor(.blue)
+                                .foregroundColor(categoryColor)
                         }
                         
                         Text(viewModel.isVoiceInputMode ? "Recording..." : "Voice Answer")
                             .font(.subheadline)
                             .fontWeight(.medium)
                     }
-                    .foregroundColor(viewModel.isVoiceInputMode ? .red : .blue)
+                    .foregroundColor(viewModel.isVoiceInputMode ? .red : categoryColor)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .glassEffect(
+                        style: .regular,
+                        tint: (viewModel.isVoiceInputMode ? Color.red : categoryColor).opacity(0.1)
+                    )
+                    .interactive()
                 }
                 .disabled(!viewModel.voicePermissionsGranted && !viewModel.isVoiceInputMode)
                 
                 Spacer()
                 
-                // Show transcription status
+                // Show transcription status with glass effects
                 if !viewModel.voiceAnswer.isEmpty {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.title3)
                         .foregroundColor(.green)
+                        .glassEffect(
+                            style: .regular,
+                            tint: Color.green.opacity(0.1)
+                        )
+                        .interactive()
                 } else if !viewModel.audioTranscriber.partialTranscription.isEmpty {
                     Text("Listening...")
                         .font(.caption)
                         .foregroundColor(.green)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .glassEffect(
+                            style: .regular,
+                            tint: Color.green.opacity(0.1)
+                        )
+                        .interactive()
                 }
             }
             
-            // Transcription preview (if available)
+            // Transcription preview with glass effects
             if !viewModel.voiceAnswer.isEmpty {
-                transcriptionPreview
+                glassTranscriptionPreview
             } else if viewModel.isVoiceInputMode && !viewModel.audioTranscriber.partialTranscription.isEmpty {
-                liveTranscriptionPreview
+                glassLiveTranscriptionPreview
             }
             
-            // Permission warning (if needed)
+            // Permission warning with glass effects
             if !viewModel.voicePermissionsGranted {
-                permissionPrompt
+                glassPermissionPrompt
             }
             
-            // Error display (if any)
+            // Error display with glass effects
             if let error = viewModel.audioTranscriber.currentError {
-                errorDisplay(error)
+                glassErrorDisplay(error)
             }
         }
         .padding(.top, 8)
         .transition(.opacity.combined(with: .move(edge: .top)))
     }
     
-    /// Shows final transcription with edit options
+    /// Shows final transcription with glass effects and edit options
     @ViewBuilder
-    private var transcriptionPreview: some View {
+    private var glassTranscriptionPreview: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Your Answer:")
@@ -258,61 +334,73 @@ struct ConversationCard: View {
                 }
                 .font(.caption)
                 .foregroundColor(.red)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .glassEffect(
+                    style: .regular,
+                    tint: Color.red.opacity(0.1)
+                )
+                .interactive()
             }
             
             Text(viewModel.voiceAnswer)
                 .font(.subheadline)
                 .foregroundColor(.primary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Color(.systemGray6))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .glassEffect(
+                    style: .regular,
+                    tint: categoryColor.opacity(0.05)
                 )
+                .interactive()
                 .lineLimit(3)
         }
     }
     
-    /// Shows live transcription during recording
+    /// Shows live transcription during recording with glass effects
     @ViewBuilder
-    private var liveTranscriptionPreview: some View {
+    private var glassLiveTranscriptionPreview: some View {
         Text(viewModel.audioTranscriber.partialTranscription)
             .font(.subheadline)
             .foregroundColor(.green)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(Color.green.opacity(0.1))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color.green.opacity(0.3), lineWidth: 1)
-                    )
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .glassEffect(
+                style: .regular,
+                tint: Color.green.opacity(0.1)
+            )
+            .interactive()
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.green.opacity(0.3), lineWidth: 1)
             )
             .lineLimit(2)
             .transition(.opacity)
     }
     
-    /// Permission prompt for first-time users
+    /// Permission prompt for first-time users with glass effects
     @ViewBuilder
-    private var permissionPrompt: some View {
+    private var glassPermissionPrompt: some View {
         HStack(spacing: 8) {
             Image(systemName: "info.circle")
-                .foregroundColor(.blue)
+                .foregroundColor(categoryColor)
             
             Text("Tap to enable voice input")
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(Color.blue.opacity(0.1))
-        .cornerRadius(6)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .glassEffect(
+            style: .regular,
+            tint: categoryColor.opacity(0.1)
+        )
+        .interactive()
     }
     
-    /// Error display for transcription issues
+    /// Error display for transcription issues with glass effects
     @ViewBuilder
-    private func errorDisplay(_ error: AudioTranscriberError) -> some View {
+    private func glassErrorDisplay(_ error: AudioTranscriberError) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
@@ -330,6 +418,13 @@ struct ConversationCard: View {
                 }
                 .font(.caption)
                 .foregroundColor(.red)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .glassEffect(
+                    style: .regular,
+                    tint: Color.red.opacity(0.1)
+                )
+                .interactive()
             }
             
             Text(error.localizedDescription)
@@ -345,29 +440,24 @@ struct ConversationCard: View {
                     .italic()
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(Color.red.opacity(0.1))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .glassEffect(
+            style: .regular,
+            tint: Color.red.opacity(0.1)
+        )
+        .interactive()
         .overlay(
-            RoundedRectangle(cornerRadius: 6)
+            RoundedRectangle(cornerRadius: 16)
                 .stroke(Color.red.opacity(0.3), lineWidth: 1)
         )
-        .cornerRadius(6)
     }
     
     // MARK: - Computed Properties
     
-    /// Dynamic card background gradient based on category and state
-    private var cardBackgroundGradient: LinearGradient {
-        let baseColor = categoryColor
-        let lighterShade = baseColor.opacity(0.1)
-        let darkerShade = baseColor.opacity(0.05)
-        
-        return LinearGradient(
-            gradient: Gradient(colors: [lighterShade, darkerShade]),
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+    /// Dynamic glass background based on category and state
+    private var glassBackgroundMaterial: Material {
+        return viewModel.isFlipped ? .ultraThinMaterial : .thinMaterial
     }
     
     /// Category-specific color theming
@@ -452,6 +542,8 @@ struct ConversationCard: View {
     }
 }
 
+// Glass effects are imported from GlassEffectExtensions.swift
+
 // MARK: - Preview Support
 
 #Preview("Single Card - Collapsed") {
@@ -465,7 +557,16 @@ struct ConversationCard: View {
         isExpanded: false
     )
     .padding()
-    .background(Color.gray.opacity(0.1))
+    .background(
+        LinearGradient(
+            gradient: Gradient(colors: [
+                Color("BrandPurple").opacity(0.3),
+                Color("BrandPurpleLight").opacity(0.2)
+            ]),
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    )
 }
 
 #Preview("Single Card - Expanded") {
@@ -479,7 +580,16 @@ struct ConversationCard: View {
         isExpanded: true
     )
     .padding()
-    .background(Color.gray.opacity(0.1))
+    .background(
+        LinearGradient(
+            gradient: Gradient(colors: [
+                Color("BrandPurple").opacity(0.3),
+                Color("BrandPurpleLight").opacity(0.2)
+            ]),
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    )
 }
 
 #Preview("Loading State") {
@@ -494,7 +604,16 @@ struct ConversationCard: View {
         isExpanded: false
     )
     .padding()
-    .background(Color.gray.opacity(0.1))
+    .background(
+        LinearGradient(
+            gradient: Gradient(colors: [
+                Color("BrandPurple").opacity(0.3),
+                Color("BrandPurpleLight").opacity(0.2)
+            ]),
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    )
 }
 
 #Preview("Multiple Cards") {
