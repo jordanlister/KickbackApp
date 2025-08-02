@@ -181,10 +181,15 @@ struct OnboardingView: View {
             MicrophonePermissionScreen(
                 isVisible: isCurrentPage,
                 permissionStatus: viewModel.microphonePermissionStatus,
+                speechRecognitionStatus: viewModel.speechRecognitionPermissionStatus,
                 isRequestingPermission: viewModel.isRequestingMicrophonePermission,
+                isRequestingSpeechPermission: viewModel.isRequestingSpeechPermission,
                 permissionError: viewModel.permissionError,
                 onRequestPermission: {
                     await viewModel.requestMicrophonePermission()
+                },
+                onRequestSpeechPermission: {
+                    await viewModel.requestSpeechRecognitionPermission()
                 },
                 onPrevious: {
                     viewModel.previousPage()

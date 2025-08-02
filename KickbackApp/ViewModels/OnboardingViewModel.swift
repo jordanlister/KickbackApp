@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 import AVFoundation
+import Speech
 
 /// ViewModel managing onboarding flow state and progression
 /// Handles page navigation, permission requests, and completion tracking
@@ -25,8 +26,14 @@ public final class OnboardingViewModel: ObservableObject {
     /// Microphone permission status
     @Published var microphonePermissionStatus: AVAudioSession.RecordPermission = .undetermined
     
+    /// Speech recognition permission status
+    @Published var speechRecognitionPermissionStatus: SFSpeechRecognizerAuthorizationStatus = .notDetermined
+    
     /// Whether we're currently requesting microphone permission
     @Published var isRequestingMicrophonePermission: Bool = false
+    
+    /// Whether we're currently requesting speech recognition permission
+    @Published var isRequestingSpeechPermission: Bool = false
     
     /// Error message for failed permission requests
     @Published var permissionError: String?
@@ -52,7 +59,7 @@ public final class OnboardingViewModel: ObservableObject {
             case .howItWorks:
                 return "How It Works"
             case .microphonePermission:
-                return "Voice Permissions"
+                return "Voice & Speech Permissions"
             }
         }
     }
@@ -75,7 +82,7 @@ public final class OnboardingViewModel: ObservableObject {
         case .welcome, .howItWorks:
             return true
         case .microphonePermission:
-            return microphonePermissionStatus == .granted
+            return microphonePermissionStatus == .granted && speechRecognitionPermissionStatus == .authorized
         }
     }
     
@@ -185,6 +192,48 @@ public final class OnboardingViewModel: ObservableObject {
             await MainActor.run {
                 permissionError = "Failed to request microphone permission: \(error.localizedDescription)"
                 isRequestingMicrophonePermission = false
+                
+                // Provide error haptic feedback
+                let notificationFeedback = UINotificationFeedbackGenerator()
+                notificationFeedback.notificationOccurred(.error)
+            }
+        }
+    }
+    
+    /// Requests speech recognition permission
+    func requestSpeechRecognitionPermission() async {
+        guard !isRequestingSpeechPermission else { return }
+        
+        isRequestingSpeechPermission = true
+        permissionError = nil
+        
+        do {
+            let permission = await withCheckedContinuation { continuation in
+                SFSpeechRecognizer.requestAuthorization { status in
+                    continuation.resume(returning: status)
+                }
+            }
+            
+            await MainActor.run {
+                speechRecognitionPermissionStatus = permission
+                isRequestingSpeechPermission = false
+                
+                if permission == .authorized {
+                    // Provide success haptic feedback
+                    let notificationFeedback = UINotificationFeedbackGenerator()
+                    notificationFeedback.notificationOccurred(.success)
+                } else {
+                    permissionError = "Speech recognition access is required for voice transcription features"
+                    
+                    // Provide error haptic feedback
+                    let notificationFeedback = UINotificationFeedbackGenerator()
+                    notificationFeedback.notificationOccurred(.error)
+                }
+            }
+        } catch {
+            await MainActor.run {
+                permissionError = "Failed to request speech recognition permission: \(error.localizedDescription)"
+                isRequestingSpeechPermission = false
                 
                 // Provide error haptic feedback
                 let notificationFeedback = UINotificationFeedbackGenerator()

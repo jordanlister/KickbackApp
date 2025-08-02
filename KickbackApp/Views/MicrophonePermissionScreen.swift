@@ -7,6 +7,7 @@
 
 import SwiftUI
 import AVFoundation
+import Speech
 
 /// Microphone permission screen with clear explanation and request integration
 /// Features liquid glass design and smooth permission state transitions
@@ -20,14 +21,23 @@ struct MicrophonePermissionScreen: View {
     /// Current microphone permission status
     let permissionStatus: AVAudioSession.RecordPermission
     
-    /// Whether permission request is in progress
+    /// Current speech recognition permission status  
+    let speechRecognitionStatus: SFSpeechRecognizerAuthorizationStatus
+    
+    /// Whether microphone permission request is in progress
     let isRequestingPermission: Bool
+    
+    /// Whether speech recognition permission request is in progress
+    let isRequestingSpeechPermission: Bool
     
     /// Error message for failed permission requests
     let permissionError: String?
     
-    /// Callback for permission request
+    /// Callback for microphone permission request
     let onRequestPermission: () async -> Void
+    
+    /// Callback for speech recognition permission request
+    let onRequestSpeechPermission: () async -> Void
     
     /// Action to perform when Previous button is tapped
     let onPrevious: () -> Void
@@ -290,6 +300,7 @@ struct MicrophonePermissionScreen: View {
     @ViewBuilder
     private var permissionButtonSection: some View {
         VStack(spacing: 16) {
+            // Microphone Permission Button
             Button(action: {
                 Task {
                     await onRequestPermission()
@@ -301,11 +312,11 @@ struct MicrophonePermissionScreen: View {
                             .scaleEffect(0.9)
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                     } else {
-                        Image(systemName: permissionButtonIconName)
+                        Image(systemName: microphoneButtonIconName)
                             .font(.system(size: 18, weight: .medium))
                     }
                     
-                    Text(permissionButtonText)
+                    Text(microphoneButtonText)
                         .font(.system(size: 18, weight: .semibold))
                 }
                 .foregroundColor(.white)
@@ -316,15 +327,15 @@ struct MicrophonePermissionScreen: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    permissionButtonColor,
-                                    permissionButtonColor.opacity(0.8)
+                                    microphoneButtonColor,
+                                    microphoneButtonColor.opacity(0.8)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                         )
                         .shadow(
-                            color: permissionButtonColor.opacity(0.4),
+                            color: microphoneButtonColor.opacity(0.4),
                             radius: 12,
                             x: 0,
                             y: 6
@@ -342,9 +353,70 @@ struct MicrophonePermissionScreen: View {
             }
             .disabled(isRequestingPermission || permissionStatus == AVAudioSession.RecordPermission.granted)
             
-            // Additional guidance for denied permission
+            // Speech Recognition Permission Button
+            Button(action: {
+                Task {
+                    await onRequestSpeechPermission()
+                }
+            }) {
+                HStack(spacing: 12) {
+                    if isRequestingSpeechPermission {
+                        ProgressView()
+                            .scaleEffect(0.9)
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    } else {
+                        Image(systemName: speechButtonIconName)
+                            .font(.system(size: 18, weight: .medium))
+                    }
+                    
+                    Text(speechButtonText)
+                        .font(.system(size: 18, weight: .semibold))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    speechButtonColor,
+                                    speechButtonColor.opacity(0.8)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .shadow(
+                            color: speechButtonColor.opacity(0.4),
+                            radius: 12,
+                            x: 0,
+                            y: 6
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(
+                            Color.white.opacity(0.2),
+                            lineWidth: 1
+                        )
+                )
+                .scaleEffect(isRequestingSpeechPermission ? 0.98 : 1.0)
+                .animation(.easeInOut(duration: 0.2), value: isRequestingSpeechPermission)
+            }
+            .disabled(isRequestingSpeechPermission || speechRecognitionStatus == .authorized)
+            
+            // Additional guidance for denied permissions
             if permissionStatus == AVAudioSession.RecordPermission.denied {
                 Text("To enable microphone access, go to Settings > Privacy & Security > Microphone > Kickback")
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 16)
+            }
+            
+            if speechRecognitionStatus == .denied || speechRecognitionStatus == .restricted {
+                Text("To enable speech recognition, go to Settings > Privacy & Security > Speech Recognition > Kickback")
                     .font(.system(size: 14, weight: .regular))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -436,8 +508,10 @@ struct MicrophonePermissionScreen: View {
         }
     }
     
-    /// Permission button text based on current state
-    private var permissionButtonText: String {
+    // MARK: - Microphone Permission Button Properties
+    
+    /// Microphone button text based on current state
+    private var microphoneButtonText: String {
         if isRequestingPermission {
             return "Requesting Permission..."
         }
@@ -454,8 +528,8 @@ struct MicrophonePermissionScreen: View {
         }
     }
     
-    /// Permission button icon name
-    private var permissionButtonIconName: String {
+    /// Microphone button icon name
+    private var microphoneButtonIconName: String {
         switch permissionStatus {
         case AVAudioSession.RecordPermission.undetermined:
             return "mic.badge.plus"
@@ -468,14 +542,62 @@ struct MicrophonePermissionScreen: View {
         }
     }
     
-    /// Permission button color based on status
-    private var permissionButtonColor: Color {
+    /// Microphone button color based on status
+    private var microphoneButtonColor: Color {
         switch permissionStatus {
         case AVAudioSession.RecordPermission.undetermined:
             return Color("BrandPurple")
         case AVAudioSession.RecordPermission.granted:
             return .green
         case AVAudioSession.RecordPermission.denied:
+            return .orange
+        @unknown default:
+            return Color("BrandPurple")
+        }
+    }
+    
+    // MARK: - Speech Recognition Permission Button Properties
+    
+    /// Speech recognition button text based on current state
+    private var speechButtonText: String {
+        if isRequestingSpeechPermission {
+            return "Requesting Permission..."
+        }
+        
+        switch speechRecognitionStatus {
+        case .notDetermined:
+            return "Allow Speech Recognition"
+        case .authorized:
+            return "Speech Recognition Granted"
+        case .denied, .restricted:
+            return "Open Settings"
+        @unknown default:
+            return "Check Speech Permission"
+        }
+    }
+    
+    /// Speech recognition button icon name
+    private var speechButtonIconName: String {
+        switch speechRecognitionStatus {
+        case .notDetermined:
+            return "waveform.badge.plus"
+        case .authorized:
+            return "checkmark.circle.fill"
+        case .denied, .restricted:
+            return "gear"
+        @unknown default:
+            return "waveform"
+        }
+    }
+    
+    /// Speech recognition button color based on status
+    private var speechButtonColor: Color {
+        switch speechRecognitionStatus {
+        case .notDetermined:
+            return Color("BrandPurple")
+        case .authorized:
+            return .green
+        case .denied, .restricted:
             return .orange
         @unknown default:
             return Color("BrandPurple")
@@ -543,9 +665,12 @@ struct MicrophonePermissionScreen: View {
         MicrophonePermissionScreen(
             isVisible: true,
             permissionStatus: AVAudioSession.RecordPermission.undetermined,
+            speechRecognitionStatus: .notDetermined,
             isRequestingPermission: false,
+            isRequestingSpeechPermission: false,
             permissionError: nil,
             onRequestPermission: {},
+            onRequestSpeechPermission: {},
             onPrevious: {},
             onComplete: {}
         )
@@ -570,9 +695,14 @@ struct MicrophonePermissionScreen: View {
         MicrophonePermissionScreen(
             isVisible: true,
             permissionStatus: AVAudioSession.RecordPermission.granted,
+            speechRecognitionStatus: .authorized,
             isRequestingPermission: false,
+            isRequestingSpeechPermission: false,
             permissionError: nil,
-            onRequestPermission: {}, onPrevious: {}, onComplete: {}
+            onRequestPermission: {},
+            onRequestSpeechPermission: {},
+            onPrevious: {},
+            onComplete: {}
         )
     }
     .preferredColorScheme(.light)
@@ -595,9 +725,14 @@ struct MicrophonePermissionScreen: View {
         MicrophonePermissionScreen(
             isVisible: true,
             permissionStatus: AVAudioSession.RecordPermission.denied,
+            speechRecognitionStatus: .denied,
             isRequestingPermission: false,
-            permissionError: "Microphone access was denied. Please enable it in Settings.",
-            onRequestPermission: {}, onPrevious: {}, onComplete: {}
+            isRequestingSpeechPermission: false,
+            permissionError: "Permissions were denied. Please enable them in Settings.",
+            onRequestPermission: {},
+            onRequestSpeechPermission: {},
+            onPrevious: {},
+            onComplete: {}
         )
     }
     .preferredColorScheme(.light)
@@ -620,9 +755,14 @@ struct MicrophonePermissionScreen: View {
         MicrophonePermissionScreen(
             isVisible: true,
             permissionStatus: AVAudioSession.RecordPermission.undetermined,
+            speechRecognitionStatus: .notDetermined,
             isRequestingPermission: true,
+            isRequestingSpeechPermission: false,
             permissionError: nil,
-            onRequestPermission: {}, onPrevious: {}, onComplete: {}
+            onRequestPermission: {},
+            onRequestSpeechPermission: {},
+            onPrevious: {},
+            onComplete: {}
         )
     }
     .preferredColorScheme(.light)
