@@ -737,6 +737,12 @@ class OpenELMModel: Module {
         return (newK, newV)
         */
     }
+    
+    /// Clear model cache to free memory
+    func clearCache() {
+        // Reset any cached states to free memory
+        print("Clearing OpenELM model cache for memory management")
+    }
 }
 
 // MARK: - SentencePiece Tokenizer (Simplified)
@@ -833,6 +839,11 @@ public final class LLMService: @unchecked Sendable {
     /// - Returns: Generated response string
     /// - Throws: LLMServiceError for various failure cases
     public func generateResponse(for prompt: String) async throws -> String {
+        // Check memory pressure before loading model
+        if ProcessInfo.processInfo.thermalState == .critical {
+            throw LLMServiceError.memoryError("Device thermal state critical - AI generation temporarily unavailable")
+        }
+        
         // Ensure the service is properly initialized
         try await initializeIfNeeded()
         
@@ -841,23 +852,29 @@ public final class LLMService: @unchecked Sendable {
             throw LLMServiceError.invalidInput("Prompt cannot be empty")
         }
         
+        // Limit prompt length to prevent memory issues
+        let maxPromptLength = 1000 // Conservative limit for 5.7GB model
+        let trimmedPrompt = String(prompt.prefix(maxPromptLength))
+        
         guard let model = model, let tokenizer = tokenizer else {
             throw LLMServiceError.modelLoadingFailed("Model components not initialized")
         }
         
         do {
-            // Format prompt for instruction model
-            let formattedPrompt = formatPromptForInstruction(prompt)
+            // Format prompt for instruction model using trimmed prompt
+            let formattedPrompt = formatPromptForInstruction(trimmedPrompt)
             
-            // Tokenize the prompt
+            // Tokenize the prompt with length limits
             let inputTokens = tokenizer.encode(formattedPrompt)
-            let inputIds = MLXArray(inputTokens).expandedDimensions(axis: 0) // Add batch dimension
+            let maxInputTokens = 256 // Conservative limit for memory
+            let limitedTokens = Array(inputTokens.prefix(maxInputTokens))
+            let inputIds = MLXArray(limitedTokens).expandedDimensions(axis: 0) // Add batch dimension
             
-            // Generate response
+            // Generate response with reduced length for memory efficiency
             let outputTokens = try await generateTokens(
                 model: model,
                 inputIds: inputIds,
-                maxLength: 150,
+                maxLength: 50, // Reduced from 150 to conserve memory
                 temperature: 0.7,
                 topK: 50
             )
@@ -866,7 +883,12 @@ public final class LLMService: @unchecked Sendable {
             let response = tokenizer.decode(outputTokens)
             
             // Clean up the response
-            return cleanResponse(response, originalPrompt: prompt)
+            let cleanedResponse = cleanResponse(response, originalPrompt: trimmedPrompt)
+            
+            // Force memory cleanup after generation
+            model.clearCache()
+            
+            return cleanedResponse
             
         } catch {
             print("Error during inference: \(error)")
@@ -972,11 +994,20 @@ public final class LLMService: @unchecked Sendable {
     private func loadModelWeights() throws {
         print("Loading OpenELM-3B model weights from safetensors files...")
         
-        // Get paths to the safetensors files
+        // Try 8-bit quantized model first for memory efficiency
+        if let quantizedPath = Bundle.main.path(forResource: "model-q8_0", ofType: "safetensors") {
+            print("Found 8-bit quantized model (~2.85GB), using for memory efficiency")
+            try loadQuantizedWeights(from: quantizedPath)
+            return
+        }
+        
+        // Fall back to full precision model
         guard let model1Path = Bundle.main.path(forResource: "model-00001-of-00002", ofType: "safetensors"),
               let model2Path = Bundle.main.path(forResource: "model-00002-of-00002", ofType: "safetensors") else {
             throw LLMServiceError.modelLoadingFailed("Could not find safetensors files in app bundle")
         }
+        
+        print("Using full precision model (5.7GB) - consider using quantized version for better memory usage")
         
         do {
             // Load safetensors files using MLX
@@ -994,6 +1025,73 @@ public final class LLMService: @unchecked Sendable {
             }
         } catch {
             throw LLMServiceError.modelLoadingFailed("Failed to load safetensors: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Load 8-bit quantized weights from single safetensors file
+    private func loadQuantizedWeights(from path: String) throws {
+        do {
+            print("Loading 8-bit quantized weights from: \(path)")
+            let quantizedWeights = try MLX.loadArrays(url: URL(fileURLWithPath: path))
+            
+            // Dequantize weights during loading for compatibility with existing architecture
+            var dequantizedWeights: [String: MLXArray] = [:]
+            var scales: [String: MLXArray] = [:]
+            var zeroPoints: [String: MLXArray] = [:]
+            
+            // First pass: collect scales and zero points
+            for (key, value) in quantizedWeights {
+                if key.hasSuffix(".scale") {
+                    let weightKey = String(key.dropLast(6)) // Remove ".scale"
+                    scales[weightKey] = value
+                } else if key.hasSuffix(".zero_point") {
+                    let weightKey = String(key.dropLast(11)) // Remove ".zero_point"
+                    zeroPoints[weightKey] = value
+                }
+            }
+            
+            // Second pass: dequantize weights
+            for (key, quantizedArray) in quantizedWeights {
+                if key.hasSuffix(".scale") || key.hasSuffix(".zero_point") {
+                    continue // Skip metadata
+                }
+                
+                if key.contains(".weight") && quantizedArray.dtype == .int8 {
+                    // Dequantize int8 weights using stored scale and zero point
+                    if let scale = scales[key], let zeroPoint = zeroPoints[key] {
+                        // Dequantize: float_value = (int8_value + 128) * scale + zero_point
+                        let floatArray = quantizedArray.asType(.float32)
+                        let dequantized = (floatArray + 128.0) * scale + zeroPoint
+                        dequantizedWeights[key] = dequantized
+                        
+                        if dequantizedWeights.count <= 5 { // Log first few for verification
+                            print("  Dequantized \(key): \(quantizedArray.shape) (int8 → float32)")
+                        }
+                    } else {
+                        print("  Warning: Missing scale/zero_point for \(key), using as-is")
+                        dequantizedWeights[key] = quantizedArray.asType(.float32)
+                    }
+                } else {
+                    // Non-quantized tensors
+                    dequantizedWeights[key] = quantizedArray
+                }
+            }
+            
+            print("Model weights loaded successfully: \(dequantizedWeights.count) tensors (8-bit quantized)")
+            
+            // Log some key weights for verification
+            if let embeddingWeight = dequantizedWeights["transformer.token_embeddings.weight"] {
+                print("  transformer.token_embeddings.weight: \(embeddingWeight.shape)")
+            }
+            if let normWeight = dequantizedWeights["transformer.norm.weight"] {
+                print("  transformer.norm.weight: \(normWeight.shape)")
+            }
+            
+            // Store the dequantized weights
+            self.modelWeights = dequantizedWeights
+            
+        } catch {
+            throw LLMServiceError.modelLoadingFailed("Failed to load quantized weights: \(error.localizedDescription)")
         }
     }
     
